@@ -3,5 +3,10 @@ export default () => ({
     port: parseInt(process.env.PORT ?? '3000', 10),
     nodeEnv: process.env.NODE_ENV || 'development',
   },
-  supabase: {},
+  supabase: {
+    url: process.env.SUPABASE_URL,
+    anonKey: process.env.SUPABASE_ANON_KEY,
+    serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+    authJwtSecret: process.env.SUPABASE_AUTH_JWT_SECRET,
+  },
 });

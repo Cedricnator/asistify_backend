@@ -1,0 +1,26 @@
+model EnterpriseCategory {
+  id          String       @id @default(cuid())
+  name        String       @unique @db.VarChar(100)
+  description String?      @db.VarChar(255)
+  created_at  DateTime     @default(now()) @map("created_at")
+  updated_at  DateTime     @updatedAt @map("updated_at")
+  enterprises Enterprise[]
+
+  @@map("enterprise_category")
+}
+
+model Enterprise {
+  id             String   @id @default(cuid())
+  name           String   @unique @db.VarChar(255)
+  created_at     DateTime @default(now()) @map("created_at")
+  updated_at     DateTime @updatedAt @map("updated_at")
+  category_id    String   @map("category_id")
+  subscriptionid String?
+
+  category      EnterpriseCategory @relation(fields: [category_id], references: [id])
+  receptionists Recepcionist[]
+  documents     Document[]
+  subscription  Subscription?      @relation(fields: [subscriptionid], references: [id])
+
+  @@map("enterprise")
+}

@@ -1,0 +1,28 @@
+model DocumentType {
+  id         String   @id @default(cuid())
+  name       String   @unique @db.VarChar(100)
+  created_at DateTime @default(now()) @map("created_at")
+  updated_at DateTime @updatedAt @map("updated_at")
+
+  Document Document[]
+
+  @@map("document_type")
+}
+
+model Document {
+  id                String   @id @default(cuid())
+  original_name     String   @db.VarChar(255)
+  extension_content String   @db.VarChar(50)
+  size              Int
+  file_path         String   @db.VarChar(255)
+  name              String   @db.VarChar(255)
+  document_type_id  String   @map("document_type_id")
+  enterprise_id     String   @map("enterprise_id")
+  created_at        DateTime @default(now()) @map("created_at")
+  updated_at        DateTime @updatedAt @map("updated_at")
+
+  document_type DocumentType @relation(fields: [document_type_id], references: [id])
+  enterprise    Enterprise   @relation(fields: [enterprise_id], references: [id])
+
+  @@map("document")
+}
