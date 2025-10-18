@@ -5,6 +5,7 @@ import { LoggerModule } from 'nestjs-pino';
 import { ConfigModule } from '@nestjs/config';
 import configuration from './config/configuration';
 import { PrismaModule } from './modules/prisma/prisma.module';
+import { SupabaseModule } from './modules/supabase/supabase.module';
 
 @Module({
   imports: [
@@ -45,6 +46,6 @@ import { PrismaModule } from './modules/prisma/prisma.module';
     }),
   ],
   controllers: [AppController],
-  providers: [AppService, PrismaModule],
+  providers: [AppService, PrismaModule, SupabaseModule],
 })
 export class AppModule {}
