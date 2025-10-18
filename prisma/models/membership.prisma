@@ -1,4 +1,3 @@
-
 model Membership {
   id            String    @id @default(cuid())
   profile_id     String    @map("profile_id")
@@ -8,6 +7,8 @@ model Membership {
   updated_at     DateTime  @updatedAt @map("updated_at")
 
   functionalities MembershipFunctionality[]
+
+  @@map("membership")
 }
 
 model Functionality {
@@ -17,6 +18,8 @@ model Functionality {
   created_at  DateTime  @default(now()) @map("created_at")
   updated_at  DateTime  @updatedAt @map("updated_at")
   memberships MembershipFunctionality[]
+
+  @@map("functionality")
 }
 
 model MembershipFunctionality {
@@ -31,5 +34,3 @@ model MembershipFunctionality {
   @@id([membership_id, funtionality_id])
   @@map("membership_funtionality")
 }
-
-

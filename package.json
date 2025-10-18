@@ -19,6 +19,10 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json"
   },
+  "prisma": {
+    "seed": "npx tsx ./scripts/seed-sql.ts",
+    "schema": "./prisma"
+  },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.2",
@@ -26,6 +30,7 @@
     "@nestjs/platform-express": "^11.0.1",
     "@prisma/adapter-pg": "^6.17.1",
     "@prisma/client": "^6.17.1",
+    "@supabase/supabase-js": "^2.75.1",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
     "nestjs-pino": "^4.4.1",

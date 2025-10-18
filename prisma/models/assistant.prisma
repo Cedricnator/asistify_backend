@@ -1,4 +1,3 @@
-
 model Recepcionist {
   id         String   @id @default(cuid())
   name       String   @db.VarChar(100)
@@ -17,6 +16,8 @@ model Recepcionist {
 
   enterprise Enterprise @relation(fields: [enterprise_id], references: [id])
   metrics Metric[]
+
+  @@map("recepcionist")
 }
 
 model Metric {
@@ -29,5 +30,5 @@ model Metric {
   recepcionist_id String @map("recepcionist_id")
 
   assistant Recepcionist @relation(fields: [recepcionist_id], references: [id])
+  @@map("metric")
 }
-

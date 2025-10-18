@@ -10,6 +10,8 @@ model Subscription {
   payments      Payment[]
 
   Enterprise Enterprise[]
+
+  @@map("subscription")
 }
 
 model Payment {
@@ -20,4 +22,6 @@ model Payment {
   subscription_id String    @map("subscription_id")
 
   subscription    Subscription @relation(fields: [subscription_id], references: [id])
+
+  @@map("payment")
 }

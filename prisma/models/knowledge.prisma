@@ -5,6 +5,8 @@ model DocumentType {
   updated_at DateTime @updatedAt @map("updated_at")
 
   Document Document[]
+
+  @@map("document_type")
 }
 
 model Document {
@@ -15,9 +17,12 @@ model Document {
   file_path         String   @db.VarChar(255)
   name              String   @db.VarChar(255)
   document_type_id  String   @map("document_type_id")
+  enterprise_id     String   @map("enterprise_id")
   created_at        DateTime @default(now()) @map("created_at")
   updated_at        DateTime @updatedAt @map("updated_at")
 
   document_type DocumentType @relation(fields: [document_type_id], references: [id])
-}
+  enterprise    Enterprise   @relation(fields: [enterprise_id], references: [id])
 
+  @@map("document")
+}
