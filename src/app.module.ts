@@ -14,34 +14,34 @@ import { PrismaModule } from './modules/prisma/prisma.module';
       load: [configuration],
     }),
     LoggerModule.forRoot({
-      pinoHttp: {
-        transport: {
-          targets: [
-            ...(process.env.NODE_ENV === 'development'
-              ? [
-                  {
-                    target: 'pino-pretty',
-                    level: process.env.LOG_LEVEL || 'debug',
-                    options: {
-                      messageKey: 'message',
-                      colorize: true,
-                      singleLine: true,
-                    },
-                  },
-                ]
-              : []),
-          ],
-        },
-        messageKey: 'message',
-        serializers: {
-          req: () => {
-            return undefined;
-          },
-          res: () => {
-            return undefined;
-          },
-        },
-      },
+      pinoHttp:
+        process.env.NODE_ENV === 'production'
+          ? {
+              level: process.env.LOG_LEVEL || 'info',
+              messageKey: 'message',
+              serializers: {
+                req: () => undefined,
+                res: () => undefined,
+              },
+            }
+          : {
+              transport: {
+                target: 'pino-pretty',
+                options: {
+                  messageKey: 'message',
+                  colorize: true,
+                  singleLine: true,
+                  levelFirst: true,
+                  translateTime: 'HH:MM:ss',
+                },
+              },
+              level: process.env.LOG_LEVEL || 'debug',
+              messageKey: 'message',
+              serializers: {
+                req: () => undefined,
+                res: () => undefined,
+              },
+            },
     }),
   ],
   controllers: [AppController],

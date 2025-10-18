@@ -1,0 +1,51 @@
+# Node modules
+node_modules
+
+# Build output
+dist
+build
+
+# Logs
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+logs
+*.log
+
+# docs
+docs
+apis
+
+# scrips
+scripts
+
+# Test artifacts
+coverage
+.nyc_output
+/test
+*.spec.ts
+
+# Version control
+.git
+.gitignore
+
+# Docker files
+Dockerfile
+.dockerignore
+
+# Environment files
+.env*
+
+# IDE and OS files
+.vscode
+.idea
+.DS_Store
+
+# Config files
+.editorconfig
+.eslintrc.js
+nodemon.json
+
+# Misc
+README.md

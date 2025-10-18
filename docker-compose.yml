@@ -1,0 +1,37 @@
+services:
+  backend.asistify.local:
+    hostname: backend.asistify.local
+    container_name: backend.asistify.local
+    build:
+      context: .
+      dockerfile: build/Dockerfile
+      target: production
+    ports:
+      - "36000:3000"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=${DATABASE_URL}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - SUPABASE_AUTH_JWT_SECRET=${SUPABASE_AUTH_JWT_SECRET}
+    networks:
+      - asistify_network
+    # Graceful shutdown configuration
+    stop_grace_period: 30s
+    stop_signal: SIGTERM
+    # Health check
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 3s
+      start_period: 5s
+      retries: 3
+    # Restart policy
+    restart: unless-stopped
+
+networks:
+  asistify_network:
+    external: true
