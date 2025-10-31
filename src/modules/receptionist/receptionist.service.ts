@@ -100,11 +100,14 @@ export class ReceptionistService {
             throw new EnterpriseNotFoundException(data.enterpriseId);
         }
 
+        // const newTwilioNumber = await this.twilioService.createNumber();
+        const newTwilioNumber = '+56934567890';
+
         // Create the receptionist
         return this.prismaService.receptionist.create({
             data: {
                 name: data.name,
-                cellphone: data.cellphone,
+                cellphone: newTwilioNumber,
                 avatarId: data.avatarId,
                 enterpriseInformation: data.enterpriseInformation,
                 clientInformation: data.clientInformation,

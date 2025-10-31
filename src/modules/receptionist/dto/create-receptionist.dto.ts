@@ -16,9 +16,6 @@ export class CreateReceptionistDto {
     @IsNotEmpty()
     readonly levelDynamism: number;
 
-    @IsMobilePhone('es-CL')
-    readonly cellphone: string;
-
     @IsString()
     readonly enterpriseId: string;
 
