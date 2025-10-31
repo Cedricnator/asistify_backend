@@ -7,11 +7,67 @@ import {
     ReceptionistHasDependenciesException,
 } from './errors/receptionist.errors';
 import { CreateReceptionistDto } from './dto/create-receptionist.dto';
+import { AssistantManager } from './assistant/assistant-manager';
+import { ReceptionistPersonality } from './assistant/types/receptionist-personality';
+import { ReceptionistSession } from './assistant/types/receptionist-session';
 
 @Injectable()
 export class ReceptionistService {
     private readonly logger = new Logger(ReceptionistService.name);
-    constructor(private readonly prismaService: PrismaService) {}
+    constructor(
+        private readonly prismaService: PrismaService,
+        private readonly assistantManager: AssistantManager,
+    ) {}
+
+    getVoiceResponse() {
+        this.logger.log('Generating voice response');
+        return {
+            message: 'This is a voice response from the Assistant Service.',
+        };
+    }
+
+    /**
+     * Initialize voice assistant for Twilio integration
+     * Returns a ready-to-use VoiceAgent instance
+     *
+     */
+    async initializeVoiceAssistant(receptionistId: string) {
+        this.logger.log(
+            `Initializing voice assistant for receptionist: ${receptionistId}`,
+        );
+
+        // Fetch the latest receptionist data from database
+        const receptionist = await this.prismaService.receptionist.findUnique({
+            where: { id: receptionistId },
+        });
+
+        if (!receptionist) {
+            throw new ReceptionistNotFoundException(receptionistId);
+        }
+
+        // Prepare personality configuration
+        const personality: ReceptionistPersonality = {
+            name: receptionist.name,
+            levelFormality: receptionist.levelFormality,
+            levelDynamism: receptionist.levelDynamism,
+            enterpriseInformation: receptionist.enterpriseInformation,
+            clientInformation: receptionist.clientInformation,
+            businessRestrictions: receptionist.businessRestrictions,
+        };
+
+        // Get VoiceAgent instance
+        const voiceSession = await this.assistantManager.initializeVoiceSession(
+            personality,
+            receptionist.id,
+        );
+
+        this.logger.log(
+            `Voice session ready for ${receptionist.name} - Formality: ${receptionist.levelFormality}/10, Dynamism: ${receptionist.levelDynamism}/10`,
+        );
+
+        // Return the VoiceAgent instance that Twilio can use directly
+        return voiceSession;
+    }
 
     async findAll(): Promise<ReceptionistEntity[]> {
         this.logger.log('Finding all receptionists');

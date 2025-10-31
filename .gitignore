@@ -1,6 +1,8 @@
 # compiled output
 /dist
 /node_modules
+*.md
+/test-audio-output
 
 # Logs
 logs
