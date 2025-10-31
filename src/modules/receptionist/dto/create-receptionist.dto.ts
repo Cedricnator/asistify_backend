@@ -5,8 +5,7 @@ export class CreateReceptionistDto {
     @IsNotEmpty()
     readonly name: string;
 
-    @IsUUID()
-    @IsNotEmpty()
+    @IsString()
     readonly avatarId: string;
 
     @IsNumber()
@@ -20,8 +19,7 @@ export class CreateReceptionistDto {
     @IsMobilePhone('es-CL')
     readonly cellphone: string;
 
-    @IsUUID()
-    @IsNotEmpty()
+    @IsString()
     readonly enterpriseId: string;
 
     @IsOptional()
