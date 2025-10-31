@@ -7,6 +7,7 @@ import configuration from './config/configuration';
 import { PrismaModule } from './modules/prisma/prisma.module';
 import { SupabaseModule } from './modules/supabase/supabase.module';
 import { ReceptionistModule } from './modules/receptionist/receptionist.module';
+import { TwilioModule } from './modules/twilio/twilio.module';
 
 @Module({
     imports: [
@@ -46,6 +47,7 @@ import { ReceptionistModule } from './modules/receptionist/receptionist.module';
                       },
         }),
         ReceptionistModule,
+        TwilioModule,
     ],
     controllers: [AppController],
     providers: [AppService, PrismaModule, SupabaseModule],

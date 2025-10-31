@@ -20,4 +20,12 @@ export default () => ({
         topP: parseFloat(process.env.GEMINI_TOP_P || '0.95'),
         topK: parseInt(process.env.GEMINI_TOP_K || '40', 10),
     },
+    twilio: {
+        accountSid: process.env.TWILIO_ACCOUNT_SID,
+        authToken: process.env.TWILIO_AUTH_TOKEN,
+        // VoIP Configuration (for Programmable Voice Client)
+        apiKeySid: process.env.TWILIO_API_KEY_SID,
+        apiKeySecret: process.env.TWILIO_API_KEY_SECRET,
+        twimlAppSid: process.env.TWILIO_TWIML_APP_SID,
+    },
 });

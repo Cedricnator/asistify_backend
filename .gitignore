@@ -3,6 +3,7 @@
 /node_modules
 *.md
 /test-audio-output
+test-voip-client.html
 
 # Logs
 logs
