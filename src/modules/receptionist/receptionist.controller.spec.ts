@@ -61,7 +61,6 @@ describe('ReceptionistController (Integration)', () => {
             const createDto: CreateReceptionistDto = {
                 name: 'Test Receptionist',
                 avatarId: mockAvatarId,
-                cellphone: '+56912345678',
                 levelFormality: 7,
                 levelDynamism: 6,
                 enterpriseId: mockEnterpriseId,
@@ -79,7 +78,6 @@ describe('ReceptionistController (Integration)', () => {
                 .expect((res) => {
                     expect(res.body).toHaveProperty('id');
                     expect(res.body.name).toBe(createDto.name);
-                    expect(res.body.cellphone).toBe(createDto.cellphone);
                     expect(res.body.levelFormality).toBe(
                         createDto.levelFormality,
                     );
@@ -103,7 +101,6 @@ describe('ReceptionistController (Integration)', () => {
             const createDto: CreateReceptionistDto = {
                 name: 'Test Receptionist',
                 avatarId: mockAvatarId,
-                cellphone: '+56912345678',
                 levelFormality: 7,
                 levelDynamism: 6,
                 enterpriseId: 'non-existent-id',
