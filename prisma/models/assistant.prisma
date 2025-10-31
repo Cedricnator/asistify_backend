@@ -1,34 +1,47 @@
-model Recepcionist {
-  id         String   @id @default(cuid())
-  name       String   @db.VarChar(100)
-  avatar    String?  @db.Text()
-  cellphone  String  @db.VarChar(15)
-  enterprise_information String @db.VarChar(255)
-  client_information    String @db.VarChar(255)
-  business_restrictions   String @db.VarChar(255)
-  level_formality Int
-  level_dinamism   Int
-  max_days_antecipation Int
-  antecipation_reservation_min_level Int
-  created_at DateTime @default(now()) @map("created_at")
-  updated_at DateTime @updatedAt @map("updated_at")
-  enterprise_id String @map("enterprise_id")
+model Receptionist {
+  id                    String   @id @default(cuid())
+  name                  String   @db.VarChar(100)
+  avatarId              String   @map("avatar_id")
+  cellphone             String   @db.VarChar(15)
+  enterpriseInformation String?  @map("enterprise_information") @db.VarChar(255)
+  clientInformation     String?  @map("client_information") @db.VarChar(255)
+  businessRestrictions  String?  @map("business_restrictions") @db.VarChar(255)
+  levelFormality        Int      @map("level_formality")
+  levelDynamism         Int      @map("level_dynamism")
+  anticipationMaxDays   Int      @map("anticipation_max_days")
+  anticipationMinDays   Int      @map("anticipation_min_days")
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+  enterpriseId          String   @map("enterprise_id")
 
-  enterprise Enterprise @relation(fields: [enterprise_id], references: [id])
-  metrics Metric[]
+  enterprise Enterprise @relation(fields: [enterpriseId], references: [id])
+  avatar     Avatar     @relation(fields: [avatarId], references: [id])
+  metrics    Metric[]
 
-  @@map("recepcionist")
+  @@map("receptionist")
+}
+
+model Avatar {
+  id        String   @id @default(cuid())
+  url       String   @db.Text()
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  receptionist Receptionist[]
+
+  @@map("avatar")
 }
 
 model Metric {
-  id         String   @id @default(cuid())
-  model_used String   @db.VarChar(100)
-  token_usage Int
-  response_time Float
-  created_at DateTime @default(now()) @map("created_at")
-  updated_at DateTime @updatedAt @map("updated_at")
-  recepcionist_id String @map("recepcionist_id")
+  id             String   @id @default(cuid())
+  modelUsed      String   @map("model_used") @db.VarChar(100)
+  tokenUsage     Int      @map("token_usage")
+  responseTime   Float    @map("response_time")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  receptionistId String   @map("receptionist_id")
 
-  assistant Recepcionist @relation(fields: [recepcionist_id], references: [id])
+  receptionist Receptionist @relation(fields: [receptionistId], references: [id])
+
   @@map("metric")
 }

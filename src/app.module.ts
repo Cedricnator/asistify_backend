@@ -6,6 +6,7 @@ import { ConfigModule } from '@nestjs/config';
 import configuration from './config/configuration';
 import { PrismaModule } from './modules/prisma/prisma.module';
 import { SupabaseModule } from './modules/supabase/supabase.module';
+import { ReceptionistModule } from './modules/receptionist/receptionist.module';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { SupabaseModule } from './modules/supabase/supabase.module';
               },
             },
     }),
+    ReceptionistModule,
   ],
   controllers: [AppController],
   providers: [AppService, PrismaModule, SupabaseModule],

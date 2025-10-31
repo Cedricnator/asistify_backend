@@ -15,12 +15,12 @@ model Enterprise {
   created_at     DateTime @default(now()) @map("created_at")
   updated_at     DateTime @updatedAt @map("updated_at")
   category_id    String   @map("category_id")
-  subscriptionid String?
+  subscription_id String?
 
   category      EnterpriseCategory @relation(fields: [category_id], references: [id])
-  receptionists Recepcionist[]
+  receptionists Receptionist[]
   documents     Document[]
-  subscription  Subscription?      @relation(fields: [subscriptionid], references: [id])
+  subscription  Subscription?      @relation(fields: [subscription_id], references: [id])
 
   @@map("enterprise")
 }
