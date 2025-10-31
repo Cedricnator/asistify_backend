@@ -1,28 +1,37 @@
 import { Injectable, Logger, OnModuleInit, Scope } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI, Modality } from '@google/genai';
 import { ReceptionistPersonality } from '../types/receptionist-personality';
 
 /**
- * VoiceAgent - Gemini AI integration for voice-based interactions
+ * VoiceAgent - Gemini Live API integration for real-time voice interactions
  *
- * This service IS the session. Each instance represents an active voice session.
+ * This service IS the session. Each instance represents an active voice streaming session.
  *
  * Usage:
  * ```typescript
  * const voiceSession = await voiceAgent.initializeSession(personality, receptionistId);
- * const response = await voiceSession.handleVoiceInteraction(userMessage);
+ * await voiceSession.connect(personality); // Start WebSocket connection
+ *
+ * // Send audio chunks (16-bit PCM, 16kHz, mono)
+ * await voiceSession.sendAudio(audioBuffer);
+ *
+ * // Receive audio responses (24kHz PCM)
+ * voiceSession.onAudioResponse((audioData) => {
+ *   // Handle audio output (send to Twilio, play, etc.)
+ * });
  * ```
  *
- * This service handles all AI logic including:
+ * This service handles:
+ * - Real-time audio streaming via WebSocket
  * - System prompt generation based on personality
- * - Session management
- * - Response generation
- * - Personality trait interpretation
+ * - Session lifecycle management
+ * - Voice Activity Detection (interruptions)
+ * - Tool calling support (for future integration)
  *
  * Configuration (via .env):
  * - GEMINI_API_KEY: Your Google AI API key (required)
- * - GEMINI_MODEL: Model name (default: gemini-2.0-flash-exp)
+ * - GEMINI_MODEL: Model name (default: gemini-2.0-flash-live-001)
  * - GEMINI_TEMPERATURE: Creativity level 0-2 (default: 1.0)
  * - GEMINI_MAX_OUTPUT_TOKENS: Max response length (default: 8192)
  * - GEMINI_TOP_P: Nucleus sampling (default: 0.95)
@@ -32,7 +41,7 @@ import { ReceptionistPersonality } from '../types/receptionist-personality';
 export class VoiceAgent implements OnModuleInit {
     private readonly logger = new Logger(VoiceAgent.name);
     private genAI: GoogleGenAI;
-    private chatSession: any; // Gemini chat session
+    private liveSession: any = null; // Live API session type
     private receptionistId: string;
     private receptionistName: string;
     private personality: {
@@ -46,12 +55,15 @@ export class VoiceAgent implements OnModuleInit {
         topP: number;
         topK: number;
     };
+    private audioResponseCallbacks: ((audioData: Buffer) => void)[] = [];
+    private textResponseCallbacks: ((text: string) => void)[] = [];
+    private isConnected = false;
 
     constructor(private readonly configService: ConfigService) {
         // Load configuration on construction
         this.modelName =
             this.configService.get<string>('gemini.model') ??
-            'gemini-2.0-flash-exp';
+            'gemini-2.0-flash-live-001';
         this.config = {
             temperature:
                 this.configService.get<number>('gemini.temperature') ?? 1.0,
@@ -77,7 +89,7 @@ export class VoiceAgent implements OnModuleInit {
         try {
             this.genAI = new GoogleGenAI({ apiKey });
             this.logger.log(
-                `Voice agent initialized with model: ${this.modelName}`,
+                `Voice agent initialized with Live API model: ${this.modelName}`,
             );
         } catch (error) {
             this.logger.error('Failed to initialize Gemini voice agent', error);
@@ -93,7 +105,9 @@ export class VoiceAgent implements OnModuleInit {
         personality: ReceptionistPersonality,
         receptionistId: string,
     ): Promise<VoiceAgent> {
-        this.logger.log(`Initializing voice session for: ${personality.name}`);
+        this.logger.log(
+            `Initializing Live API session for: ${personality.name}`,
+        );
 
         if (!this.genAI) {
             throw new Error(
@@ -109,57 +123,209 @@ export class VoiceAgent implements OnModuleInit {
             dynamism: personality.levelDynamism,
         };
 
-        // Build system instruction based on personality
-        const systemInstruction = this.buildSystemInstruction(personality);
+        this.logger.log(
+            `Session initialized for ${personality.name} - Formality: ${personality.levelFormality}/10, Dynamism: ${personality.levelDynamism}/10`,
+        );
+
+        // Return this instance as the session (connection happens when connect() is called)
+        return this;
+    }
+
+    /**
+     * Connect to Gemini Live API via WebSocket
+     * Call this after initializeSession() to start the streaming session
+     */
+    async connect(personality: ReceptionistPersonality): Promise<void> {
+        if (!this.genAI) {
+            throw new Error(
+                'Voice agent not initialized. Check your Gemini API key.',
+            );
+        }
+
+        if (this.isConnected) {
+            this.logger.warn('Already connected to Live API');
+            return;
+        }
 
         try {
-            // Create and store the chat session
-            this.chatSession = await this.genAI.chats.create({
+            // Build system instruction based on personality
+            const systemInstruction = this.buildSystemInstruction(personality);
+
+            // Create Live API session with audio response modality
+            this.liveSession = await this.genAI.live.connect({
                 model: this.modelName,
                 config: {
-                    temperature: this.config.temperature,
-                    maxOutputTokens: this.config.maxOutputTokens,
-                    topP: this.config.topP,
-                    topK: this.config.topK,
-                    systemInstruction,
+                    responseModalities: [Modality.AUDIO], // Request audio output
+                    systemInstruction: systemInstruction,
+                },
+                callbacks: {
+                    // Handle incoming messages
+                    onmessage: (response) => {
+                        // Debug: log the full response structure
+                        this.logger.debug(
+                            `Received response with keys: ${Object.keys(response).join(', ')}`,
+                        );
+
+                        // Handle audio in serverContent
+                        if (response.serverContent?.modelTurn?.parts) {
+                            const parts =
+                                response.serverContent.modelTurn.parts;
+                            parts.forEach((part: any) => {
+                                // Handle inline audio data
+                                if (part.inlineData?.data) {
+                                    const audioData = Buffer.from(
+                                        part.inlineData.data,
+                                        'base64',
+                                    );
+                                    this.logger.log(
+                                        `Received audio chunk: ${audioData.length} bytes (mimeType: ${part.inlineData.mimeType})`,
+                                    );
+
+                                    // Notify all registered callbacks
+                                    this.audioResponseCallbacks.forEach(
+                                        (callback) => {
+                                            callback(audioData);
+                                        },
+                                    );
+                                }
+
+                                // Handle text responses
+                                if (part.text) {
+                                    this.logger.log(
+                                        `Received text: ${part.text}`,
+                                    );
+                                    this.textResponseCallbacks.forEach(
+                                        (callback) => {
+                                            callback(part.text);
+                                        },
+                                    );
+                                }
+                            });
+                        }
+
+                        // Also check for direct data field (alternative structure)
+                        if (response.data && !response.serverContent) {
+                            this.logger.debug(
+                                `Direct data field found: ${typeof response.data}`,
+                            );
+                            const audioData = Buffer.from(response.data);
+                            this.audioResponseCallbacks.forEach((callback) => {
+                                callback(audioData);
+                            });
+                        }
+                    },
+                    // Handle errors
+                    onerror: (error) => {
+                        this.logger.error('Live API error:', error);
+                        this.isConnected = false;
+                    },
+                    // Handle connection close
+                    onclose: () => {
+                        this.logger.log('Live API session closed');
+                        this.isConnected = false;
+                    },
+                    // Handle connection open
+                    onopen: () => {
+                        this.logger.log('Live API WebSocket connection opened');
+                    },
                 },
             });
 
+            this.isConnected = true;
             this.logger.log(
-                `Session initialized for ${personality.name} - Formality: ${personality.levelFormality}/10, Dynamism: ${personality.levelDynamism}/10`,
+                `Connected to Live API for ${this.receptionistName}`,
             );
-
-            // Return this instance as the session
-            return this;
         } catch (error) {
-            this.logger.error('Error initializing session', error);
+            this.logger.error('Error connecting to Live API', error);
             throw error;
         }
     }
 
     /**
-     * Handle voice interaction - main method for Twilio to call
-     * @param userMessage - The user's speech transcribed to text
-     * @returns AI-generated response
+     * Send audio data to Gemini Live API
+     * @param audioBuffer - Audio data in 16-bit PCM, 16kHz, mono format
      */
-    async handleVoiceInteraction(userMessage: string): Promise<string> {
-        if (!this.chatSession) {
-            throw new Error(
-                'Session not initialized. Call initializeSession() first.',
-            );
+    async sendAudio(audioBuffer: Buffer): Promise<void> {
+        if (!this.liveSession || !this.isConnected) {
+            throw new Error('Session not connected. Call connect() first.');
         }
 
-        this.logger.log(`Processing message for ${this.receptionistName}`);
+        try {
+            // Use sendRealtimeInput for audio chunks
+            this.liveSession.sendRealtimeInput({
+                media: {
+                    data: audioBuffer,
+                    mimeType: 'audio/pcm;rate=16000',
+                },
+            });
+
+            this.logger.debug(`Sent audio chunk: ${audioBuffer.length} bytes`);
+        } catch (error) {
+            this.logger.error('Error sending audio', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Send text input to Gemini (for testing or mixed modality)
+     * @param text - Text message
+     */
+    async sendText(text: string): Promise<void> {
+        if (!this.liveSession || !this.isConnected) {
+            throw new Error('Session not connected. Call connect() first.');
+        }
 
         try {
-            const result = await this.chatSession.sendMessage(userMessage);
-            const response = result.text || '';
-
-            this.logger.log(`Generated response (${response.length} chars)`);
-            return response;
+            // Use sendClientContent for text input
+            this.liveSession.sendClientContent({
+                turns: [
+                    {
+                        role: 'user',
+                        parts: [{ text }],
+                    },
+                ],
+                turnComplete: true, // Indicates we're done sending and expect a response
+            });
+            this.logger.log(`Sent text: ${text}`);
         } catch (error) {
-            this.logger.error('Error in voice interaction', error);
+            this.logger.error('Error sending text', error);
             throw error;
+        }
+    }
+
+    /**
+     * Register a callback to receive audio responses
+     * @param callback - Function to handle audio data (24kHz PCM)
+     */
+    onAudioResponse(callback: (audioData: Buffer) => void): void {
+        this.audioResponseCallbacks.push(callback);
+    }
+
+    /**
+     * Remove an audio response callback
+     */
+    offAudioResponse(callback: (audioData: Buffer) => void): void {
+        const index = this.audioResponseCallbacks.indexOf(callback);
+        if (index > -1) {
+            this.audioResponseCallbacks.splice(index, 1);
+        }
+    }
+
+    /**
+     * Register a callback to receive text responses
+     * @param callback - Function to handle text data
+     */
+    onTextResponse(callback: (text: string) => void): void {
+        this.textResponseCallbacks.push(callback);
+    }
+
+    /**
+     * Remove a text response callback
+     */
+    offTextResponse(callback: (text: string) => void): void {
+        const index = this.textResponseCallbacks.indexOf(callback);
+        if (index > -1) {
+            this.textResponseCallbacks.splice(index, 1);
         }
     }
 
@@ -175,56 +341,36 @@ export class VoiceAgent implements OnModuleInit {
     }
 
     /**
-     * Get chat history
+     * Check if session is connected
      */
-    async getHistory() {
-        if (!this.chatSession) {
-            throw new Error('Session not initialized');
-        }
-
-        try {
-            return await this.chatSession.getHistory();
-        } catch (error) {
-            this.logger.error('Error getting chat history', error);
-            throw error;
-        }
+    isSessionConnected(): boolean {
+        return this.isConnected;
     }
 
     /**
-     * End the session
+     * End the session and close WebSocket connection
      */
     async endSession() {
         this.logger.log(`Ending session for ${this.receptionistName}`);
-        this.chatSession = null;
-    }
 
-    /**
-     * Generate a response from the voice agent
-     */
-    async generateResponse(prompt: string): Promise<string> {
-        if (!this.genAI) {
-            throw new Error(
-                'Voice agent not initialized. Check your Gemini API key.',
-            );
+        if (this.liveSession) {
+            try {
+                // Close the WebSocket connection
+                if (typeof this.liveSession.close === 'function') {
+                    this.liveSession.close();
+                }
+            } catch (error) {
+                this.logger.error(
+                    'Error disconnecting Live API session',
+                    error,
+                );
+            }
         }
 
-        try {
-            const response = await this.genAI.models.generateContent({
-                model: this.modelName,
-                contents: prompt,
-                config: {
-                    temperature: this.config.temperature,
-                    maxOutputTokens: this.config.maxOutputTokens,
-                    topP: this.config.topP,
-                    topK: this.config.topK,
-                },
-            });
-
-            return response.text || '';
-        } catch (error) {
-            this.logger.error('Error generating response', error);
-            throw error;
-        }
+        this.liveSession = null;
+        this.isConnected = false;
+        this.audioResponseCallbacks = [];
+        this.textResponseCallbacks = [];
     }
 
     /**

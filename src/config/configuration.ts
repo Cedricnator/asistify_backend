@@ -11,7 +11,7 @@ export default () => ({
     },
     gemini: {
         apiKey: process.env.GEMINI_API_KEY,
-        model: process.env.GEMINI_MODEL || 'gemini-2.0-flash-exp',
+        model: process.env.GEMINI_MODEL || 'gemini-2.0-flash-live-001', // Live API model with tool calling
         temperature: parseFloat(process.env.GEMINI_TEMPERATURE || '1.0'),
         maxOutputTokens: parseInt(
             process.env.GEMINI_MAX_OUTPUT_TOKENS || '8192',
