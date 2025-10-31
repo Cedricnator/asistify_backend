@@ -14,6 +14,11 @@ import { CreateReceptionistDto } from './dto/create-receptionist.dto';
 export class ReceptionistController {
     constructor(private readonly receptionistService: ReceptionistService) {}
 
+    @Get('assistant/voice')
+    getVoiceResponse() {
+        return this.receptionistService.getVoiceResponse();
+    }
+
     @Get()
     findAll() {
         return this.receptionistService.findAll();
