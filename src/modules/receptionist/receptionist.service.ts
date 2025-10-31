@@ -1,6 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ReceptionistEntity } from './entities/receptionist.entity';
+import {
+    ReceptionistNotFoundException,
+    EnterpriseNotFoundException,
+    ReceptionistHasDependenciesException,
+} from './errors/receptionist.errors';
+import { CreateReceptionistDto } from './dto/create-receptionist.dto';
 
 @Injectable()
 export class ReceptionistService {
@@ -12,23 +18,109 @@ export class ReceptionistService {
         return await this.prismaService.receptionist.findMany();
     }
 
-    findOne(id: string) {
+    async findOne(id: string): Promise<ReceptionistEntity> {
         this.logger.log(`Finding receptionist with id: ${id}`);
-        // Implementation to find a receptionist by id
+
+        const receptionist = await this.prismaService.receptionist.findUnique({
+            where: { id },
+        });
+
+        if (!receptionist) {
+            throw new ReceptionistNotFoundException(id);
+        }
+
+        return receptionist;
     }
 
-    create(data: any) {
+    async create(data: CreateReceptionistDto): Promise<ReceptionistEntity> {
         this.logger.log('Creating a new receptionist');
-        // Implementation to create a new receptionist
+
+        // Check if enterprise exists
+        const enterprise = await this.prismaService.enterprise.findUnique({
+            where: { id: data.enterpriseId },
+        });
+
+        if (!enterprise) {
+            throw new EnterpriseNotFoundException(data.enterpriseId);
+        }
+
+        // Create the receptionist
+        return this.prismaService.receptionist.create({
+            data: {
+                name: data.name,
+                cellphone: data.cellphone,
+                avatarId: data.avatarId,
+                enterpriseInformation: data.enterpriseInformation,
+                clientInformation: data.clientInformation,
+                businessRestrictions: data.businessRestrictions,
+                levelFormality: data.levelFormality,
+                levelDynamism: data.levelDynamism,
+                anticipationMaxDays: data.anticipationMaxDays,
+                anticipationMinDays: data.anticipationMinDays,
+                enterpriseId: data.enterpriseId,
+            },
+        });
     }
 
-    update(id: string, data: any) {
+    async update(id: string, data: any): Promise<ReceptionistEntity> {
         this.logger.log(`Updating receptionist with id: ${id}`);
-        // Implementation to update a receptionist by id
+
+        // Check if receptionist exists
+        await this.findOne(id); // Throws ReceptionistNotFoundException if not found
+
+        // Update the receptionist
+        return this.prismaService.receptionist.update({
+            where: { id },
+            data: {
+                ...(data.name && { name: data.name }),
+                ...(data.cellphone && { cellphone: data.cellphone }),
+                ...(data.avatarId && { avatarId: data.avatarId }),
+                ...(data.enterpriseInformation && {
+                    enterpriseInformation: data.enterpriseInformation,
+                }),
+                ...(data.clientInformation && {
+                    clientInformation: data.clientInformation,
+                }),
+                ...(data.businessRestrictions && {
+                    businessRestrictions: data.businessRestrictions,
+                }),
+                ...(data.levelFormality !== undefined && {
+                    levelFormality: data.levelFormality,
+                }),
+                ...(data.levelDynamism !== undefined && {
+                    levelDynamism: data.levelDynamism,
+                }),
+                ...(data.anticipationMaxDays !== undefined && {
+                    anticipationMaxDays: data.anticipationMaxDays,
+                }),
+                ...(data.anticipationMinDays !== undefined && {
+                    anticipationMinDays: data.anticipationMinDays,
+                }),
+            },
+        });
     }
 
-    delete(id: string) {
+    async delete(id: string): Promise<ReceptionistEntity> {
         this.logger.log(`Deleting receptionist with id: ${id}`);
-        // Implementation to delete a receptionist by id
+
+        // Check if receptionist exists
+        const receptionist = await this.findOne(id); // Throws ReceptionistNotFoundException if not found
+
+        // Check if receptionist has metrics (dependencies)
+        const metricsCount = await this.prismaService.metric.count({
+            where: { receptionistId: id },
+        });
+
+        if (metricsCount > 0) {
+            throw new ReceptionistHasDependenciesException(
+                id,
+                `${metricsCount} metric(s)`,
+            );
+        }
+
+        // Delete the receptionist
+        return this.prismaService.receptionist.delete({
+            where: { id },
+        });
     }
 }
