@@ -3,6 +3,7 @@
 /node_modules
 /docs
 /test-audio-output
+/tmp
 test-voip-client.html
 
 # Logs

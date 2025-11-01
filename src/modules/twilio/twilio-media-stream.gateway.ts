@@ -55,6 +55,8 @@ export class TwilioMediaStreamGateway
     private lastNonSilentAt: Map<any, number> = new Map();
     // Track last time we forced an end-turn per client to avoid spamming
     private lastForcedEndAt: Map<any, number> = new Map();
+    // When true for a client, handleMedia will not forward audio to Gemini
+    private sendingBlocked: Map<any, boolean> = new Map();
 
     constructor(private readonly configService: ConfigService) {}
 
@@ -75,66 +77,6 @@ export class TwilioMediaStreamGateway
         });
     }
 
-    /**
-     * Merge an array of raw PCM Buffers with a linear crossfade of overlapSamples
-     * (number of samples) applied between adjacent buffers. Buffers are 16-bit
-     * signed little-endian. Returns a single Buffer.
-     */
-    private mergeWithCrossfade(
-        buffers: Buffer[],
-        overlapSamples: number,
-    ): Buffer {
-        if (!buffers || buffers.length === 0) return Buffer.alloc(0);
-        if (buffers.length === 1 || overlapSamples <= 0)
-            return Buffer.concat(buffers);
-
-        // Start with first buffer
-        let output = Buffer.from(buffers[0]);
-
-        for (let i = 1; i < buffers.length; i++) {
-            const curr = buffers[i];
-
-            // Determine actual overlap in samples taking into account small buffers
-            const maxOverlap = Math.floor(
-                Math.min(output.length, curr.length) / 2,
-            );
-            const oSamples = Math.min(overlapSamples, maxOverlap);
-            const oBytes = oSamples * 2;
-
-            if (oSamples <= 0) {
-                // Simple append
-                output = Buffer.concat([output, curr]);
-                continue;
-            }
-
-            const tailStart = output.length - oBytes;
-            const tail = output.slice(tailStart);
-            const head = curr.slice(0, oBytes);
-
-            const blended = Buffer.alloc(oBytes);
-            for (let s = 0; s < oSamples; s++) {
-                const a = tail.readInt16LE(s * 2);
-                const b = head.readInt16LE(s * 2);
-
-                // linear ramp: weightPrev decreases, weightCurr increases
-                const weightCurr = s / (oSamples - 1 || 1);
-                const weightPrev = 1 - weightCurr;
-                let mixed = Math.round(a * weightPrev + b * weightCurr);
-                if (mixed > 32767) mixed = 32767;
-                if (mixed < -32768) mixed = -32768;
-                blended.writeInt16LE(mixed, s * 2);
-            }
-
-            // Build new output: output[0:tailStart] + blended + curr[oBytes:]
-            output = Buffer.concat([
-                output.slice(0, tailStart),
-                blended,
-                curr.slice(oBytes),
-            ]);
-        }
-
-        return output;
-    }
 
     /**
      * Handle WebSocket disconnection
@@ -249,6 +191,21 @@ export class TwilioMediaStreamGateway
                 client.send(JSON.stringify(payload));
             });
 
+            // When the agent signals that generation is complete, re-enable sending
+            if (typeof agent.onGenerationComplete === 'function') {
+                agent.onGenerationComplete(async () => {
+                    this.logger.log(
+                        'Re-enabled sending audio to Gemini after generation complete',
+                    );
+                    // DOUBLE DELAY, FOR TESTING PURPOSES
+                    await new Promise((resolve) => {
+                        setTimeout(resolve, 1000);
+                    });
+                    this.lastNonSilentAt.set(client, Date.now());
+                    this.sendingBlocked.set(client, false);
+                });
+            }
+
             // Default personality for AI receptionist
             const personality: ReceptionistPersonality = {
                 name: 'AI Receptionist',
@@ -267,123 +224,6 @@ export class TwilioMediaStreamGateway
             // Wait a moment for Gemini to fully initialize
             await new Promise((resolve) => setTimeout(resolve, 500));
 
-            // // Optional testing aid: send a canned test audio file once when the
-            // // agent is initialized. This avoids repeatedly sending the test
-            // // file on every media packet. The gateway looks first in docs/16000.wav
-            // // then falls back to ./16000.wav.
-            // try {
-            //     const docsPath = path.join(process.cwd(), 'docs', '16000.wav');
-            //     const rootPath = path.join(process.cwd(), '16000.wav');
-            //     let testFilePath = docsPath;
-            //     if (!fs.existsSync(testFilePath)) testFilePath = rootPath;
-
-            //     if (fs.existsSync(testFilePath)) {
-            //         this.logger.log(
-            //             `Sending test audio once from: ${testFilePath}`,
-            //         );
-            //         const fileBuf = fs.readFileSync(testFilePath);
-            //         const wavFile = new WaveFile(fileBuf);
-            //         wavFile.toSampleRate(16000);
-            //         wavFile.toBitDepth('16');
-            //         const samples = Array.from(
-            //             wavFile.getSamples(false) as Float64Array,
-            //         );
-            //         const pcmBuffer = Buffer.alloc(samples.length * 2);
-            //         for (let i = 0; i < samples.length; i++) {
-            //             const s = samples[i];
-            //             let intSample = 0;
-            //             if (typeof s === 'number' && Number.isFinite(s)) {
-            //                 if (Math.abs(s) <= 1)
-            //                     intSample = Math.round(s * 32767);
-            //                 else intSample = Math.round(s);
-            //             }
-            //             if (intSample > 32767) intSample = 32767;
-            //             if (intSample < -32768) intSample = -32768;
-            //             pcmBuffer.writeInt16LE(intSample, i * 2);
-            //         }
-            //         // Stream the test audio in smaller chunks to emulate realtime
-            //         // input and allow the Live API's VAD to detect end-of-speech.
-            //         const sampleRate = 16000;
-            //         const bytesPerSample = 2; // int16
-            //         const chunkMs = Number(
-            //             this.configService.get('TEST_AUDIO_CHUNK_MS') || 100,
-            //         );
-            //         const chunkSamples = Math.floor(
-            //             (chunkMs / 1000) * sampleRate,
-            //         );
-            //         const chunkBytes = chunkSamples * bytesPerSample;
-
-            //         let sentChunks = 0;
-            //         for (
-            //             let offset = 0;
-            //             offset < pcmBuffer.length;
-            //             offset += chunkBytes
-            //         ) {
-            //             const end = Math.min(
-            //                 offset + chunkBytes,
-            //                 pcmBuffer.length,
-            //             );
-            //             const slice = pcmBuffer.slice(offset, end);
-            //             await agent.sendAudio(slice);
-            //             sentChunks++;
-            //         }
-
-            //         // Append a short silence to help VAD/end-of-speech detection
-            //         const silenceMs = Number(
-            //             this.configService.get('TEST_AUDIO_END_SILENCE_MS') ||
-            //                 300,
-            //         );
-            //         if (silenceMs > 0) {
-            //             const silenceSamples = Math.floor(
-            //                 (silenceMs / 1000) * sampleRate,
-            //             );
-            //             const silenceBuf = Buffer.alloc(
-            //                 silenceSamples * bytesPerSample,
-            //                 0,
-            //             );
-            //             await agent.sendAudio(silenceBuf);
-            //             this.logger.log(
-            //                 `Appended ${silenceMs}ms silence to test stream to help VAD.`,
-            //             );
-            //         }
-            //         // Optionally force the live session to treat this as a completed turn
-            //         // Useful when VAD isn't reliably triggering. Enable with FORCE_TURN_COMPLETE=true
-            //         const forceTurn = !!this.configService.get(
-            //             'FORCE_TURN_COMPLETE',
-            //         );
-            //         if (forceTurn) {
-            //             try {
-            //                 await agent.forceEndTurn();
-            //                 this.logger.log(
-            //                     'Forced turnComplete after test audio (FORCE_TURN_COMPLETE=true)',
-            //                 );
-            //             } catch (err) {
-            //                 this.logger.error(
-            //                     'Error forcing turnComplete:',
-            //                     err?.message || err,
-            //                 );
-            //             }
-            //         }
-            //         this.logger.log(
-            //             `Test audio streamed to Gemini in ${sentChunks} chunks (chunkMs=${chunkMs}ms)`,
-            //         );
-            //     } else {
-            //         this.logger.debug(
-            //             'No test audio file found for one-shot send',
-            //         );
-            //     }
-            // } catch (err) {
-            //     this.logger.error(
-            //         'Error sending one-shot test audio:',
-            //         err?.message || err,
-            //     );
-            // }
-
-            // Send initial greeting to start the conversation
-            // this.logger.log('Sending initial greeting to Gemini...');
-            // await agent.sendText(
-            //     'Hello! I can hear you now. How can I help you today?',
-            // );
 
             // Clear buffered audio - skip it for now to test if that's causing the issue
             const bufferedAudio = this.audioBuffers.get(client) || [];
@@ -409,6 +249,11 @@ export class TwilioMediaStreamGateway
             return;
         }
 
+        if (this.sendingBlocked.get(client)) {
+            this.logger.log('Blocked');
+            return;
+        }
+
         // data.media.payload is base64-encoded μ-law audio (8kHz, mono)
         const audioPayload = data.media.payload;
         const audioBuffer = Buffer.from(audioPayload, 'base64');
@@ -429,7 +274,6 @@ export class TwilioMediaStreamGateway
             return;
         }
 
-        // Placeholder variables (kept for compatibility with the original flow)
         let geminiPayload: { mimeType: string; data: string } | null = null;
         let pcm16khz: Buffer = Buffer.alloc(0);
         let pcm8khz: Buffer = Buffer.alloc(0);
@@ -471,6 +315,8 @@ export class TwilioMediaStreamGateway
                     const lastForced = this.lastForcedEndAt.get(client) || 0;
                     if (now - lastForced >= throttleMs) {
                         try {
+                            // Prevent further audio from being forwarded while we force end the turn
+                            this.sendingBlocked.set(client, true);
                             await agent.forceEndTurn();
                             this.lastForcedEndAt.set(client, now);
                             this.logger.log(
@@ -492,131 +338,6 @@ export class TwilioMediaStreamGateway
                 return;
             }
 
-            // Optionally save Gemini-bound PCM for debugging (paired pre/post)
-            const saveEnabled = !!this.configService.get('SAVE_GEMINI_AUDIO');
-            if (saveEnabled) {
-                try {
-                    // Append post-resample 16k PCM
-                    const existing = this.geminiSaveBuffers.get(client) || {
-                        buffers: [],
-                        byteCount: 0,
-                        lastAppend: 0,
-                    };
-                    existing.buffers.push(pcm16khz);
-                    existing.byteCount += pcm16khz.length;
-                    existing.lastAppend = Date.now();
-                    this.geminiSaveBuffers.set(client, existing);
-
-                    // Append pre-resample 8k PCM
-                    const preExisting = this.geminiPreSaveBuffers.get(
-                        client,
-                    ) || {
-                        buffers: [],
-                        byteCount: 0,
-                        lastAppend: 0,
-                    };
-                    preExisting.buffers.push(pcm8khz);
-                    preExisting.byteCount += pcm8khz.length;
-                    preExisting.lastAppend = Date.now();
-                    this.geminiPreSaveBuffers.set(client, preExisting);
-
-                    // Flush if we've collected more than the configured chunk seconds
-                    const chunkSeconds = Number(
-                        this.configService.get('SAVE_GEMINI_CHUNK_SECONDS') ||
-                            3,
-                    );
-                    const bytesThreshold =
-                        Math.max(1, chunkSeconds) * 16000 * 2; // seconds * sampleRate * bytesPerSample
-                    if (existing.byteCount >= bytesThreshold) {
-                        const crossfadeMs = Number(
-                            this.configService.get(
-                                'SAVE_GEMINI_CROSSFADE_MS',
-                            ) || 10,
-                        );
-                        const overlapSamples = Math.max(
-                            0,
-                            Math.floor((crossfadeMs / 1000) * 16000),
-                        );
-                        const combined = this.mergeWithCrossfade(
-                            existing.buffers,
-                            overlapSamples,
-                        );
-
-                        const tmpDir = path.join(process.cwd(), 'tmp');
-                        if (!fs.existsSync(tmpDir))
-                            fs.mkdirSync(tmpDir, { recursive: true });
-                        const ts = Date.now();
-                        const baseName = `gemini-chunk-${ts}-${this.audioCheckCounter}`;
-                        const pcmPath = path.join(tmpDir, `${baseName}.pcm`);
-                        fs.writeFileSync(pcmPath, combined);
-
-                        const samples: number[] = [];
-                        for (let i = 0; i < combined.length; i += 2)
-                            samples.push(combined.readInt16LE(i));
-                        const wav = new WaveFile();
-                        wav.fromScratch(1, 16000, '16', samples);
-                        const wavPath = path.join(tmpDir, `${baseName}.wav`);
-                        fs.writeFileSync(wavPath, wav.toBuffer());
-
-                        this.logger.log(
-                            `Saved Gemini debug chunk: ${pcmPath}, ${wavPath}`,
-                        );
-
-                        // Also flush paired pre-resample 8k
-                        try {
-                            const overlapSamples8 = Math.max(
-                                0,
-                                Math.floor((crossfadeMs / 1000) * 8000),
-                            );
-                            const combined8 = this.mergeWithCrossfade(
-                                preExisting.buffers,
-                                overlapSamples8,
-                            );
-                            const pcm8Path = path.join(
-                                tmpDir,
-                                `${baseName}-pre8k.pcm`,
-                            );
-                            fs.writeFileSync(pcm8Path, combined8);
-                            const samples8: number[] = [];
-                            for (let i = 0; i < combined8.length; i += 2)
-                                samples8.push(combined8.readInt16LE(i));
-                            const wav8 = new WaveFile();
-                            wav8.fromScratch(1, 8000, '16', samples8);
-                            const wav8Path = path.join(
-                                tmpDir,
-                                `${baseName}-pre8k.wav`,
-                            );
-                            fs.writeFileSync(wav8Path, wav8.toBuffer());
-                            this.logger.log(
-                                `Saved paired pre-resample chunk: ${pcm8Path}, ${wav8Path}`,
-                            );
-                        } catch (err) {
-                            this.logger.error(
-                                'Error saving pre-resample debug chunk:',
-                                err?.message || err,
-                            );
-                        }
-
-                        // Reset buffers for this client
-                        this.geminiSaveBuffers.set(client, {
-                            buffers: [],
-                            byteCount: 0,
-                            lastAppend: 0,
-                        });
-                        this.geminiPreSaveBuffers.set(client, {
-                            buffers: [],
-                            byteCount: 0,
-                            lastAppend: 0,
-                        });
-                        this.audioCheckCounter++;
-                    }
-                } catch (err) {
-                    this.logger.error(
-                        'Error saving Gemini debug audio:',
-                        err?.message || err,
-                    );
-                }
-            }
         } catch (err) {
             this.logger.error(
                 'Error sending Twilio audio to Gemini:',
@@ -641,96 +362,6 @@ export class TwilioMediaStreamGateway
         // Clean up all client-related data
         this.streamIds.delete(data.streamSid);
         this.audioBuffers.delete(client);
-
-        // Flush and remove any pending Gemini save buffer for this client
-        try {
-            const entry = this.geminiSaveBuffers.get(client);
-            if (entry && entry.byteCount > 0) {
-                // Merge with crossfade when flushing on stop as well
-                const crossfadeMs = Number(
-                    this.configService.get('SAVE_GEMINI_CROSSFADE_MS') || 10,
-                );
-                const overlapSamples = Math.max(
-                    0,
-                    Math.floor((crossfadeMs / 1000) * 16000),
-                );
-                const combined = this.mergeWithCrossfade(
-                    entry.buffers,
-                    overlapSamples,
-                );
-                const tmpDir = path.join(process.cwd(), 'tmp');
-                if (!fs.existsSync(tmpDir))
-                    fs.mkdirSync(tmpDir, { recursive: true });
-                const ts = Date.now();
-                const baseName = `gemini-flush-${ts}-${this.audioCheckCounter}`;
-                const pcmPath = path.join(tmpDir, `${baseName}.pcm`);
-                fs.writeFileSync(pcmPath, combined);
-
-                const samples: number[] = [];
-                for (let i = 0; i < combined.length; i += 2) {
-                    samples.push(combined.readInt16LE(i));
-                }
-                const wav = new WaveFile();
-                wav.fromScratch(1, 16000, '16', samples);
-                const wavBuf = wav.toBuffer();
-                const wavPath = path.join(tmpDir, `${baseName}.wav`);
-                fs.writeFileSync(wavPath, wavBuf);
-
-                this.logger.log(
-                    `Flushed pending Gemini audio files: ${pcmPath}, ${wavPath}`,
-                );
-
-                // Also flush paired pre-resample 8k buffers if present
-                try {
-                    const preEntry = this.geminiPreSaveBuffers.get(client);
-                    if (preEntry && preEntry.byteCount > 0) {
-                        const overlapSamples8 = Math.max(
-                            0,
-                            Math.floor((crossfadeMs / 1000) * 8000),
-                        );
-                        const combined8 = this.mergeWithCrossfade(
-                            preEntry.buffers,
-                            overlapSamples8,
-                        );
-                        const pcm8Path = path.join(
-                            tmpDir,
-                            `${baseName}-pre8k.pcm`,
-                        );
-                        fs.writeFileSync(pcm8Path, combined8);
-
-                        const samples8: number[] = [];
-                        for (let i = 0; i < combined8.length; i += 2) {
-                            samples8.push(combined8.readInt16LE(i));
-                        }
-                        const wav8 = new WaveFile();
-                        wav8.fromScratch(1, 8000, '16', samples8);
-                        const wav8Path = path.join(
-                            tmpDir,
-                            `${baseName}-pre8k.wav`,
-                        );
-                        fs.writeFileSync(wav8Path, wav8.toBuffer());
-
-                        this.logger.log(
-                            `Flushed pending paired pre-resample files: ${pcm8Path}, ${wav8Path}`,
-                        );
-                    }
-                } catch (err) {
-                    this.logger.error(
-                        'Error flushing pending pre-resample buffers:',
-                        err?.message || err,
-                    );
-                } finally {
-                    this.geminiPreSaveBuffers.delete(client);
-                }
-            }
-        } catch (err) {
-            this.logger.error(
-                'Error flushing pending Gemini save buffer:',
-                err?.message || err,
-            );
-        } finally {
-            this.geminiSaveBuffers.delete(client);
-        }
 
         // Close the WebSocket connection
         try {

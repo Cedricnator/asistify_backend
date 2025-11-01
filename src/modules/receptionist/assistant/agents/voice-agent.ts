@@ -43,6 +43,7 @@ export class VoiceAgent implements OnModuleInit {
     };
     private audioResponseCallbacks: ((audioData: Buffer) => void)[] = [];
     private textResponseCallbacks: ((text: string) => void)[] = [];
+    private generationCompleteCallbacks: (() => void)[] = [];
     private isConnected = false;
     private audioChunkCount = 0; // Track sent audio chunks
 
@@ -82,6 +83,13 @@ export class VoiceAgent implements OnModuleInit {
             this.logger.error('Failed to initialize Gemini voice agent', error);
             throw error;
         }
+    }
+
+    /**
+     * Register a callback to be invoked when the Live API signals generation complete
+     */
+    onGenerationComplete(callback: () => void): void {
+        this.generationCompleteCallbacks.push(callback);
     }
 
     /**
@@ -210,31 +218,34 @@ export class VoiceAgent implements OnModuleInit {
                             }
                         }
 
-                        // // Some Live API responses may include raw audio bytes on response.data
-                        // // (SDK may surface these as binary frames). Handle them as audio chunks.
-                        // if (response.data) {
-                        //     try {
-                        //         const audioData =
-                        //             Buffer.isBuffer(response.data)
-                        //                 ? response.data
-                        //                 : Buffer.from(response.data as unknown as Uint8Array);
-                        //         this.logger.log(
-                        //             `Received audio chunk (response.data): ${audioData.length} bytes`,
-                        //         );
-                        //         this.audioResponseCallbacks.forEach((callback) => callback(audioData));
-                        //     } catch (err) {
-                        //         this.logger.error('Error handling response.data audio chunk:', err?.message || err);
-                        //     }
-                        // }
-
                         // ServerContent Generation Complete Check
-                        if (response.serverContent) {
+                        if (response.serverContent?.generationComplete) {
                             this.logger.log(
                                 'Received Generated Complete Check',
                             );
-                            await new Promise((resolve) =>
-                                setTimeout(resolve, 500),
-                            );
+                            // Notify any listeners that generation has completed
+                            try {
+                                this.generationCompleteCallbacks.forEach(
+                                    async (cb) => {
+                                        try {
+                                            await new Promise((resolve) =>
+                                                setTimeout(resolve, 4000),
+                                            );
+                                            cb();
+                                        } catch (e) {
+                                            this.logger.error(
+                                                'Error in generationComplete callback:',
+                                                e?.message || e,
+                                            );
+                                        }
+                                    },
+                                );
+                            } catch (e) {
+                                this.logger.error(
+                                    'Error notifying generationComplete callbacks:',
+                                    e?.message || e,
+                                );
+                            }
                         }
 
                         // Handle interruptions
@@ -434,7 +445,10 @@ export class VoiceAgent implements OnModuleInit {
             });
             this.logger.log('Forced turnComplete sent to Live API');
         } catch (err) {
-            this.logger.error('Error forcing turnComplete:', err?.message || err);
+            this.logger.error(
+                'Error forcing turnComplete:',
+                err?.message || err,
+            );
         }
     }
 
@@ -532,7 +546,8 @@ export class VoiceAgent implements OnModuleInit {
             personality.levelDynamism,
         );
 
-        let instruction = `You are ${personality.name}, a virtual receptionist assistant.
+        let instruction = `You are ${personality.name}, you must repeat back what the message I send you.
+        if you cannot understand the message, respond with "I am sorry, I did not understand that. Could you please repeat?".
 
 **Personality:**
 - Formality Level: ${formalityLevel} (${personality.levelFormality}/10)
