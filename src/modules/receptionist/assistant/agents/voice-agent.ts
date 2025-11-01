@@ -162,7 +162,7 @@ export class VoiceAgent implements OnModuleInit {
                         this.logger.log('Live API WebSocket connection opened');
                     },
                     // Handle incoming messages
-                    onmessage: (response) => {
+                    onmessage: async (response) => {
                         // Debug: log the response structure
                         this.logger.debug(
                             `Received message with properties: setupComplete=${!!response.setupComplete}, serverContent=${!!response.serverContent}, text=${!!response.text}, data=${!!response.data}`,
@@ -208,6 +208,33 @@ export class VoiceAgent implements OnModuleInit {
                                     }
                                 }
                             }
+                        }
+
+                        // // Some Live API responses may include raw audio bytes on response.data
+                        // // (SDK may surface these as binary frames). Handle them as audio chunks.
+                        // if (response.data) {
+                        //     try {
+                        //         const audioData =
+                        //             Buffer.isBuffer(response.data)
+                        //                 ? response.data
+                        //                 : Buffer.from(response.data as unknown as Uint8Array);
+                        //         this.logger.log(
+                        //             `Received audio chunk (response.data): ${audioData.length} bytes`,
+                        //         );
+                        //         this.audioResponseCallbacks.forEach((callback) => callback(audioData));
+                        //     } catch (err) {
+                        //         this.logger.error('Error handling response.data audio chunk:', err?.message || err);
+                        //     }
+                        // }
+
+                        // ServerContent Generation Complete Check
+                        if (response.serverContent) {
+                            this.logger.log(
+                                'Received Generated Complete Check',
+                            );
+                            await new Promise((resolve) =>
+                                setTimeout(resolve, 500),
+                            );
                         }
 
                         // Handle interruptions
@@ -290,7 +317,7 @@ export class VoiceAgent implements OnModuleInit {
      * @param audioBuffer - Audio data in 16-bit PCM, 16kHz, mono format
      */
     async sendAudio(
-        audioBuffer: Buffer,
+        audio: Buffer | { mimeType: string; data: string },
         turnComplete: boolean = false,
     ): Promise<void> {
         if (!this.liveSession || !this.isConnected) {
@@ -298,14 +325,46 @@ export class VoiceAgent implements OnModuleInit {
         }
 
         try {
-            // Convert buffer to base64 string for Gemini API
-            const base64Audio = audioBuffer.toString('base64');
+            let mimeType = 'audio/pcm;rate=16000';
+            let base64Audio: string;
+
+            if (
+                audio &&
+                typeof audio === 'object' &&
+                'data' in audio &&
+                'mimeType' in audio
+            ) {
+                // Already a ready-to-send payload
+                base64Audio = audio.data;
+                mimeType = audio.mimeType;
+            } else if (Buffer.isBuffer(audio)) {
+                // Raw PCM buffer — convert to base64
+                base64Audio = (audio as Buffer).toString('base64');
+            } else {
+                throw new Error('Unsupported audio payload');
+            }
 
             // Use sendRealtimeInput() for streaming audio
             // The Live API will automatically handle VAD and respond when it detects end of speech
+            // Log outgoing audio summary (not the full payload) to help debug transport/format issues
+            try {
+                const decoded = Buffer.from(base64Audio, 'base64');
+                const preview = decoded
+                    .slice(0, Math.min(8, decoded.length))
+                    .toString('hex');
+                this.logger.debug(
+                    `sendAudio -> mimeType=${mimeType} bytes=${decoded.length} preview=${preview}`,
+                );
+            } catch (err) {
+                this.logger.debug(
+                    'sendAudio -> could not decode preview for logging',
+                    err?.message || err,
+                );
+            }
+
             this.liveSession.sendRealtimeInput({
                 audio: {
-                    mimeType: 'audio/pcm;rate=16000',
+                    mimeType,
                     data: base64Audio,
                 },
             });
@@ -314,7 +373,7 @@ export class VoiceAgent implements OnModuleInit {
             this.audioChunkCount++;
             if (this.audioChunkCount % 50 === 0) {
                 this.logger.debug(
-                    `Sent ${this.audioChunkCount} audio chunks (${audioBuffer.length} bytes each)`,
+                    `Sent ${this.audioChunkCount} audio chunks (mime=${mimeType})`,
                 );
             }
         } catch (error) {
@@ -348,6 +407,34 @@ export class VoiceAgent implements OnModuleInit {
         } catch (error) {
             this.logger.error('Error sending text', error);
             throw error;
+        }
+    }
+
+    /**
+     * Force the Live API to treat the current client audio as a completed turn.
+     * This sends an empty user turn with turnComplete=true which can be used
+     * to force the model to generate a response when VAD doesn't trigger.
+     */
+    async forceEndTurn(): Promise<void> {
+        if (!this.liveSession || !this.isConnected) {
+            this.logger.warn('Cannot force end turn: session not connected');
+            return;
+        }
+
+        try {
+            // Send an empty user part but set turnComplete so the model will generate
+            this.liveSession.sendClientContent({
+                turns: [
+                    {
+                        role: 'user',
+                        parts: [{ text: '' }],
+                    },
+                ],
+                turnComplete: true,
+            });
+            this.logger.log('Forced turnComplete sent to Live API');
+        } catch (err) {
+            this.logger.error('Error forcing turnComplete:', err?.message || err);
         }
     }
 

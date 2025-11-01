@@ -32,7 +32,12 @@ export function hasAudioSignal(pcmBuffer: Buffer): boolean {
  * @param mulawBuffer - Buffer containing μ-law encoded audio from Twilio
  * @returns Buffer containing 16-bit PCM audio at 16kHz for Gemini
  */
-export function twilioToGeminiAudio(mulawBuffer: Buffer): Buffer {
+/**
+ * Convert Twilio μ-law 8kHz audio to Gemini PCM 16kHz format
+ * Returns a payload object ready to send to Gemini Live API:
+ * { mimeType: 'audio/pcm;rate=16000', data: '<base64>' }
+ */
+export function twilioToGeminiAudio(mulawBuffer: Buffer): { mimeType: string; data: string } {
     try {
         const wav = new WaveFile();
 
@@ -48,24 +53,89 @@ export function twilioToGeminiAudio(mulawBuffer: Buffer): Buffer {
         // Resample to 16kHz
         wav.toSampleRate(16000);
 
-        // Get raw PCM data
-        const samples = wav.getSamples(false) as Float64Array;
+        // Extract numeric samples from the WaveFile. The wavefile library
+        // may return either floats in [-1,1] or integer sample values
+        // depending on the internal representation. Normalize both cases
+        // to signed 16-bit little-endian PCM (linear16) which the Live API
+        // expects for mimeType 'audio/pcm;rate=16000'.
+    // wavefile returns a typed array (Float64Array). Convert to a plain
+    // number[] to make subsequent handling and TS typing straightforward.
+    const samples = Array.from(wav.getSamples(false) as Float64Array);
 
-        // Convert Float64Array to Int16 Buffer
+        // Convert numeric samples to Int16LE Buffer (raw PCM, no WAV header)
         const pcmBuffer = Buffer.alloc(samples.length * 2);
         for (let i = 0; i < samples.length; i++) {
-            const value = Math.max(
-                -32768,
-                Math.min(32767, Math.round(samples[i])),
-            );
-            pcmBuffer.writeInt16LE(value, i * 2);
+            const s = samples[i];
+            let intSample = 0;
+
+            if (typeof s === 'number' && Number.isFinite(s)) {
+                // If sample is float in [-1,1], scale to 16-bit range
+                if (Math.abs(s) <= 1) {
+                    intSample = Math.round(s * 32767);
+                } else {
+                    // Already integer-like sample
+                    intSample = Math.round(s);
+                }
+            }
+
+            // Clamp to int16 range
+            if (intSample > 32767) intSample = 32767;
+            if (intSample < -32768) intSample = -32768;
+
+            pcmBuffer.writeInt16LE(intSample, i * 2);
         }
 
-        return pcmBuffer;
+        // Return payload ready for Gemini Live API: raw PCM bytes (base64) and matching mimeType
+        return {
+            mimeType: 'audio/pcm;rate=16000',
+            data: pcmBuffer.toString('base64'),
+        };
     } catch (error) {
         console.error('Error converting Twilio to Gemini audio:', error);
-        // Fallback to silence if conversion fails
-        return Buffer.alloc(mulawBuffer.length * 4, 0);
+        // Fallback to an empty payload (silence)
+        const empty = Buffer.alloc(1600, 0);
+        return {
+            mimeType: 'audio/pcm;rate=16000',
+            data: empty.toString('base64'),
+        };
+    }
+}
+
+/**
+ * Decode μ-law buffer (8kHz) to raw PCM 16-bit little-endian Buffer at 8kHz
+ * This returns raw linear16 PCM bytes (no WAV header) which is useful for
+ * debugging the pre-resample audio stage.
+ */
+export function mulawToPcm8k(mulawBuffer: Buffer): Buffer {
+    try {
+        const wav = new WaveFile();
+        // Create μ-law WAV: 1 channel, 8kHz, 8-bit μ-law
+        wav.fromScratch(1, 8000, '8m', Array.from(mulawBuffer));
+        // Convert μ-law to PCM and to 16-bit depth (but do NOT resample)
+        wav.fromMuLaw();
+        wav.toBitDepth('16');
+
+        // Extract samples and write as Int16LE buffer
+        const samples = Array.from(wav.getSamples(false) as Float64Array);
+        const pcmBuffer = Buffer.alloc(samples.length * 2);
+        for (let i = 0; i < samples.length; i++) {
+            const s = samples[i];
+            let intSample = 0;
+            if (typeof s === 'number' && Number.isFinite(s)) {
+                if (Math.abs(s) <= 1) {
+                    intSample = Math.round(s * 32767);
+                } else {
+                    intSample = Math.round(s);
+                }
+            }
+            if (intSample > 32767) intSample = 32767;
+            if (intSample < -32768) intSample = -32768;
+            pcmBuffer.writeInt16LE(intSample, i * 2);
+        }
+        return pcmBuffer;
+    } catch (error) {
+        console.error('Error decoding μ-law to PCM8k:', error);
+        return Buffer.alloc(0);
     }
 }
 
