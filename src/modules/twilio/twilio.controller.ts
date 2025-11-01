@@ -78,11 +78,13 @@ export class TwilioWebhookController {
      *
      * This endpoint receives webhooks when a VoIP client initiates a call.
      * Returns TwiML instructions for how Twilio should handle the call.
+     *
      */
     @Post('webhook/voice')
     handleVoiceCall(
         @Body() body: any,
         @Headers('x-twilio-signature') signature: string,
+        @Headers('host') host: string,
         @Res() res: Response,
     ) {
         this.logger.log('Received VoIP voice call webhook');
@@ -94,6 +96,13 @@ export class TwilioWebhookController {
             `VoIP call from ${From} to ${To} (SID: ${CallSid}, Status: ${CallStatus})`,
         );
 
+        // Build WebSocket URL for Media Streams
+        // In production, use your actual domain. For development, use ngrok URL
+        const protocol = 'wss'; // Always use secure WebSocket
+        const streamUrl = `${protocol}://${host}/twilio/media-stream`;
+
+        this.logger.log(`Media Stream URL: ${streamUrl}`);
+
         // Validate webhook signature (skip for development)
         // const isValid = this.twilioService.validateWebhookSignature(
         //     signature,
@@ -101,8 +110,8 @@ export class TwilioWebhookController {
         //     body,
         // );
 
-        // Generate TwiML response
-        const twiml = this.twilioService.generateIncomingCallTwiML();
+        // Generate TwiML response with Media Streams
+        const twiml = this.twilioService.generateIncomingCallTwiML(streamUrl);
 
         // Send TwiML response
         res.status(HttpStatus.OK).type('text/xml').send(twiml);

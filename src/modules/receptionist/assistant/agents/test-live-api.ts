@@ -20,7 +20,8 @@ loadEnv();
 class MockConfigService extends ConfigService {
     private config = {
         'gemini.apiKey': process.env.GEMINI_API_KEY,
-        'gemini.model': 'gemini-2.0-flash-live-001',
+        'gemini.model':
+            process.env.GEMINI_MODEL || 'gemini-live-2.5-flash-preview',
         'gemini.temperature': 1.0,
         'gemini.maxOutputTokens': 8192,
         'gemini.topP': 0.95,

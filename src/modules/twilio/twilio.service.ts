@@ -48,33 +48,47 @@ export class TwilioService {
 
         const AccessToken = require('twilio').jwt.AccessToken;
         const VoiceGrant = AccessToken.VoiceGrant;
-        
+
         const token = new AccessToken(accountSid, apiKeySid, apiKeySecret, {
             identity: identity,
             ttl: 3600, // 1 hour
         });
-        
+
         const voiceGrant = new VoiceGrant({
             outgoingApplicationSid: twimlAppSid,
             incomingAllow: true,
         });
-        
+
         token.addGrant(voiceGrant);
         return token.toJwt();
     }
 
     /**
-     * Generate TwiML response for incoming VoIP call
-     * This connects the VoIP client to the AI receptionist
+     * Generate TwiML response for incoming VoIP call with Media Streams
+     * This connects the VoIP client to the AI receptionist via WebSocket
+     *
+     * @param streamUrl - WebSocket URL for Media Streams (e.g., wss://your-domain.com/twilio/media-stream)
      */
-    generateIncomingCallTwiML(): string {
+    generateIncomingCallTwiML(streamUrl?: string): string {
         this.logger.log('Generating TwiML for incoming VoIP call');
 
-        return `<?xml version="1.0" encoding="UTF-8"?>
+        // If no stream URL provided, use simple greeting
+        if (!streamUrl) {
+            return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Say voice="Polly.Joanna">Hello! You've reached our AI receptionist. Please hold while we connect you.</Say>
     <Pause length="1"/>
     <Say voice="Polly.Joanna">VoIP connection established. Media streaming coming soon!</Say>
+</Response>`;
+        }
+
+        // Use Media Streams to connect to Gemini AI
+        return `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Say voice="Polly.Joanna">Connecting you to our AI receptionist.</Say>
+    <Connect>
+        <Stream url="${streamUrl}" />
+    </Connect>
 </Response>`;
     }
 

@@ -22,20 +22,6 @@ import { ReceptionistPersonality } from '../types/receptionist-personality';
  * });
  * ```
  *
- * This service handles:
- * - Real-time audio streaming via WebSocket
- * - System prompt generation based on personality
- * - Session lifecycle management
- * - Voice Activity Detection (interruptions)
- * - Tool calling support (for future integration)
- *
- * Configuration (via .env):
- * - GEMINI_API_KEY: Your Google AI API key (required)
- * - GEMINI_MODEL: Model name (default: gemini-2.0-flash-live-001)
- * - GEMINI_TEMPERATURE: Creativity level 0-2 (default: 1.0)
- * - GEMINI_MAX_OUTPUT_TOKENS: Max response length (default: 8192)
- * - GEMINI_TOP_P: Nucleus sampling (default: 0.95)
- * - GEMINI_TOP_K: Top-k sampling (default: 40)
  */
 @Injectable({ scope: Scope.TRANSIENT })
 export class VoiceAgent implements OnModuleInit {
@@ -58,6 +44,7 @@ export class VoiceAgent implements OnModuleInit {
     private audioResponseCallbacks: ((audioData: Buffer) => void)[] = [];
     private textResponseCallbacks: ((text: string) => void)[] = [];
     private isConnected = false;
+    private audioChunkCount = 0; // Track sent audio chunks
 
     constructor(private readonly configService: ConfigService) {
         // Load configuration on construction
@@ -155,78 +142,135 @@ export class VoiceAgent implements OnModuleInit {
             this.liveSession = await this.genAI.live.connect({
                 model: this.modelName,
                 config: {
-                    responseModalities: [Modality.AUDIO], // Request audio output
-                    systemInstruction: systemInstruction,
+                    responseModalities: [Modality.AUDIO],
+                    systemInstruction: {
+                        parts: [{ text: systemInstruction }],
+                    },
+                    // Configure Voice Activity Detection for better turn detection
+                    // This helps Gemini know when the user has stopped speaking
+                    speechConfig: {
+                        voiceConfig: {
+                            prebuiltVoiceConfig: {
+                                voiceName: 'Kore', // Professional female voice
+                            },
+                        },
+                    },
                 },
                 callbacks: {
+                    // Handle connection open
+                    onopen: () => {
+                        this.logger.log('Live API WebSocket connection opened');
+                    },
                     // Handle incoming messages
                     onmessage: (response) => {
-                        // Debug: log the full response structure
+                        // Debug: log the response structure
                         this.logger.debug(
-                            `Received response with keys: ${Object.keys(response).join(', ')}`,
+                            `Received message with properties: setupComplete=${!!response.setupComplete}, serverContent=${!!response.serverContent}, text=${!!response.text}, data=${!!response.data}`,
                         );
 
-                        // Handle audio in serverContent
-                        if (response.serverContent?.modelTurn?.parts) {
-                            const parts =
-                                response.serverContent.modelTurn.parts;
-                            parts.forEach((part: any) => {
-                                // Handle inline audio data
-                                if (part.inlineData?.data) {
-                                    const audioData = Buffer.from(
-                                        part.inlineData.data,
-                                        'base64',
-                                    );
-                                    this.logger.log(
-                                        `Received audio chunk: ${audioData.length} bytes (mimeType: ${part.inlineData.mimeType})`,
-                                    );
+                        // Handle setup complete
+                        if (response.setupComplete) {
+                            this.logger.log('Live API setup complete');
+                            return;
+                        }
 
-                                    // Notify all registered callbacks
-                                    this.audioResponseCallbacks.forEach(
-                                        (callback) => {
-                                            callback(audioData);
-                                        },
-                                    );
+                        // Handle server content with model turns
+                        if (response.serverContent?.modelTurn) {
+                            const modelTurn = response.serverContent.modelTurn;
+                            if (modelTurn.parts) {
+                                for (const part of modelTurn.parts) {
+                                    // Handle inline audio data
+                                    if (part.inlineData?.data) {
+                                        const audioData = Buffer.from(
+                                            part.inlineData.data,
+                                            'base64',
+                                        );
+                                        this.logger.log(
+                                            `Received audio chunk: ${audioData.length} bytes (mimeType: ${part.inlineData.mimeType})`,
+                                        );
+                                        this.audioResponseCallbacks.forEach(
+                                            (callback) => {
+                                                callback(audioData);
+                                            },
+                                        );
+                                    }
+                                    // Handle text in parts
+                                    if (part.text) {
+                                        const textContent = part.text;
+                                        this.logger.log(
+                                            `Received text: ${textContent}`,
+                                        );
+                                        this.textResponseCallbacks.forEach(
+                                            (callback) => {
+                                                callback(textContent);
+                                            },
+                                        );
+                                    }
                                 }
+                            }
+                        }
 
-                                // Handle text responses
-                                if (part.text) {
-                                    this.logger.log(
-                                        `Received text: ${part.text}`,
-                                    );
-                                    this.textResponseCallbacks.forEach(
-                                        (callback) => {
-                                            callback(part.text);
-                                        },
-                                    );
-                                }
+                        // Handle interruptions
+                        if (response.serverContent?.interrupted) {
+                            this.logger.log('Generation was interrupted');
+                        }
+
+                        // Handle text directly on the message (for TEXT modality)
+                        if (response.text) {
+                            const textContent = response.text;
+                            this.logger.log(`Received text: ${textContent}`);
+                            this.textResponseCallbacks.forEach((callback) => {
+                                callback(textContent);
                             });
                         }
 
-                        // Also check for direct data field (alternative structure)
-                        if (response.data && !response.serverContent) {
-                            this.logger.debug(
-                                `Direct data field found: ${typeof response.data}`,
+                        // Handle tool calls (function calling)
+                        if (response.toolCall) {
+                            this.logger.log(
+                                `Tool call received: ${JSON.stringify(response.toolCall)}`,
                             );
-                            const audioData = Buffer.from(response.data);
-                            this.audioResponseCallbacks.forEach((callback) => {
-                                callback(audioData);
-                            });
+                        }
+
+                        // Handle usage metadata
+                        if (response.usageMetadata) {
+                            this.logger.debug(
+                                `Usage: ${JSON.stringify(response.usageMetadata)}`,
+                            );
+                        }
+
+                        // Log if we receive an empty/unknown response
+                        if (
+                            !response.setupComplete &&
+                            !response.serverContent &&
+                            !response.text &&
+                            !response.data &&
+                            !response.toolCall &&
+                            !response.usageMetadata
+                        ) {
+                            this.logger.warn(
+                                `Received unknown message type: ${JSON.stringify(response)}`,
+                            );
                         }
                     },
                     // Handle errors
                     onerror: (error) => {
                         this.logger.error('Live API error:', error);
+                        this.logger.error(
+                            'Error details:',
+                            JSON.stringify(error),
+                        );
                         this.isConnected = false;
                     },
                     // Handle connection close
-                    onclose: () => {
+                    onclose: (event) => {
                         this.logger.log('Live API session closed');
+                        if (event) {
+                            this.logger.log(
+                                'Close event:',
+                                JSON.stringify(event),
+                            );
+                        }
                         this.isConnected = false;
-                    },
-                    // Handle connection open
-                    onopen: () => {
-                        this.logger.log('Live API WebSocket connection opened');
                     },
                 },
             });
@@ -245,23 +289,37 @@ export class VoiceAgent implements OnModuleInit {
      * Send audio data to Gemini Live API
      * @param audioBuffer - Audio data in 16-bit PCM, 16kHz, mono format
      */
-    async sendAudio(audioBuffer: Buffer): Promise<void> {
+    async sendAudio(
+        audioBuffer: Buffer,
+        turnComplete: boolean = false,
+    ): Promise<void> {
         if (!this.liveSession || !this.isConnected) {
             throw new Error('Session not connected. Call connect() first.');
         }
 
         try {
-            // Use sendRealtimeInput for audio chunks
+            // Convert buffer to base64 string for Gemini API
+            const base64Audio = audioBuffer.toString('base64');
+
+            // Use sendRealtimeInput() for streaming audio
+            // The Live API will automatically handle VAD and respond when it detects end of speech
             this.liveSession.sendRealtimeInput({
-                media: {
-                    data: audioBuffer,
+                audio: {
                     mimeType: 'audio/pcm;rate=16000',
+                    data: base64Audio,
                 },
             });
 
-            this.logger.debug(`Sent audio chunk: ${audioBuffer.length} bytes`);
+            // Only log every 50th chunk to reduce spam
+            this.audioChunkCount++;
+            if (this.audioChunkCount % 50 === 0) {
+                this.logger.debug(
+                    `Sent ${this.audioChunkCount} audio chunks (${audioBuffer.length} bytes each)`,
+                );
+            }
         } catch (error) {
             this.logger.error('Error sending audio', error);
+            this.logger.error('Error stack:', error.stack);
             throw error;
         }
     }

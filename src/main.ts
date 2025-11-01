@@ -1,12 +1,16 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { Logger } from 'nestjs-pino';
+import { WsAdapter } from '@nestjs/platform-ws';
 
 async function bootstrap() {
     const app = await NestFactory.create(AppModule, {
         bufferLogs: true,
         logger: ['log', 'error', 'debug', 'warn', 'verbose'],
     });
+
+    // Use WsAdapter for WebSocket support (needed for Twilio Media Streams)
+    app.useWebSocketAdapter(new WsAdapter(app));
 
     // Enable CORS for development
     app.enableCors({
