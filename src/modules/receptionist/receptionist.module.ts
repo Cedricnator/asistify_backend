@@ -7,9 +7,9 @@ import { AssistantManager } from './assistant/assistant-manager';
 import { VoiceAgent } from './assistant/agents/voice-agent';
 
 @Module({
-    imports: [PrismaModule, SupabaseModule],
-    providers: [ReceptionistService, AssistantManager, VoiceAgent],
-    controllers: [ReceptionistController],
-    exports: [ReceptionistService, AssistantManager],
+  imports: [PrismaModule, SupabaseModule],
+  providers: [ReceptionistService, AssistantManager, VoiceAgent],
+  controllers: [ReceptionistController],
+  exports: [ReceptionistService, AssistantManager],
 })
 export class ReceptionistModule {}

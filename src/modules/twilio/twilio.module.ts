@@ -13,9 +13,9 @@ import { ReceptionistModule } from '../receptionist/receptionist.module';
  * - Call management and routing
  */
 @Module({
-    imports: [ReceptionistModule],
-    controllers: [TwilioWebhookController],
-    providers: [TwilioService, TwilioMediaStreamGateway],
-    exports: [TwilioService],
+  imports: [ReceptionistModule],
+  controllers: [TwilioWebhookController],
+  providers: [TwilioService, TwilioMediaStreamGateway],
+  exports: [TwilioService],
 })
 export class TwilioModule {}
