@@ -18,7 +18,10 @@ export class SupabaseAuthRepository implements UserRepository {
   }
 
   private shouldSkip(): boolean {
-    return this.env === process.env.NODE_ENV || process.env.NODE_ENV === 'test';
+    if (this.env === 'local' || this.env === 'test') {
+      return true;
+    }
+    return false;
   }
 
   private handleError(error: AuthError) {
