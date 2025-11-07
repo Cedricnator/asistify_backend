@@ -234,6 +234,9 @@ VALUES
   ('c5d6e7f8-a9b0-4c1d-2e3f-4a5b6c7d8e9a', 'gpt-4o', 460, 1.3, 'd4e5f6a7-b8c9-4d0e-1f2a-3b4c5d6e7f8b', NOW(), NOW()),
   ('d6e7f8a9-b0c1-4d2e-3f4a-5b6c7d8e9f0b', 'gpt-4o', 475, 1.2, 'e5f6a7b8-c9d0-4e1f-2a3b-4c5d6e7f8a9c', NOW(), NOW());
 
--- =====================================================
--- End of Seed Data
--- =====================================================
+
+INSERT INTO document_type (id, name, created_at, updated_at) 
+VALUES
+  ('4fc9ff43-cfb7-4b3f-a1b2-01eeab4c7a29', 'General', NOW(), NOW()),
+  ('d01d9195-875a-496e-a427-b97e28b66317', 'Specific', NOW(), NOW()),
+  ('57d132bc-6c4a-48f2-9938-00c2d627af6a', 'Normative', NOW(), NOW());
