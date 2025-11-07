@@ -10,6 +10,7 @@ import { ReceptionistModule } from './modules/receptionist/receptionist.module';
 import { TwilioModule } from './modules/twilio/twilio.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { DocumentModule } from './modules/document/document.module';
+import { MinioModule } from './modules/minio/minio.module';
 
 @Module({
   imports: [
@@ -48,6 +49,7 @@ import { DocumentModule } from './modules/document/document.module';
               },
             },
     }),
+    MinioModule,
     ReceptionistModule,
     TwilioModule,
     DocumentModule,

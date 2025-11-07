@@ -7,14 +7,25 @@ import {
   ParseUUIDPipe,
   Post,
   Version,
+  UseInterceptors,
+  UploadedFile,
+  Body,
+  BadRequestException,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { CreateDocumentUseCase } from '../../application/use-cases/document/create-document.use-case';
 import { FindDocumentsUseCase } from '../../application/use-cases/document/find-documents.use-case';
 import { FindDocumentUseCase } from '../../application/use-cases/document/find-document.use-case';
 import { DeleteDocumentUseCase } from '../../application/use-cases/document/delete-document.use-case';
 import { CreateDocumentDto } from '../dtos/create-document.dto';
 import { DocumentEntity } from '../../domain/entities/document.entity';
-import { ApiOperation, ApiResponse } from '@nestjs/swagger';
+import {
+  ApiOperation,
+  ApiResponse,
+  ApiConsumes,
+  ApiBody,
+} from '@nestjs/swagger';
+import { MinioService } from '../../../minio/minio.service';
 
 @Controller('documents')
 export class DocumentController {
@@ -23,7 +34,64 @@ export class DocumentController {
     private readonly findDocumentsUseCase: FindDocumentsUseCase,
     private readonly findDocumentUseCase: FindDocumentUseCase,
     private readonly deleteDocumentUseCase: DeleteDocumentUseCase,
+    private readonly minioService: MinioService,
   ) {}
+
+  @Version('1')
+  @ApiOperation({ summary: 'Upload a new document' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+        },
+        documentTypeId: {
+          type: 'string',
+          format: 'uuid',
+        },
+        enterpriseId: {
+          type: 'string',
+          format: 'uuid',
+        },
+      },
+      required: ['file', 'documentTypeId', 'enterpriseId'],
+    },
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'The document has been successfully uploaded.',
+    type: DocumentEntity,
+  })
+  @Post('upload')
+  @HttpCode(201)
+  @UseInterceptors(FileInterceptor('file'))
+  async upload(
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: { documentTypeId: string; enterpriseId: string },
+  ): Promise<DocumentEntity> {
+    if (!file) {
+      throw new BadRequestException('File is required');
+    }
+
+    // Subir archivo a MinIO
+    const uploadedFile = await this.minioService.uploadFile(file, 'documents');
+
+    // Crear documento en la base de datos
+    const dto: CreateDocumentDto = {
+      name: file.originalname,
+      originalName: file.originalname,
+      extensionContent: file.mimetype,
+      size: file.size,
+      filePath: uploadedFile.fileName,
+      documentTypeId: body.documentTypeId,
+      enterpriseId: body.enterpriseId,
+    };
+
+    return await this.createDocumentUseCase.execute(dto);
+  }
 
   @Version('1')
   @ApiOperation({ summary: 'Create a new document' })
