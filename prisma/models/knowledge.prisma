@@ -12,8 +12,8 @@ model Document {
   id                String       @id @default(cuid())
   original_name     String       @db.VarChar(255)
   extension_content String       @db.VarChar(50)
-  size              Int
-  file_path         String       @db.VarChar(255)
+  size              Int          
+  file_path         String       @db.Text
   name              String       @db.VarChar(255)
   document_type_id  String       @map("document_type_id")
   enterprise_id     String       @map("enterprise_id")

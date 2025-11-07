@@ -2,6 +2,8 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { Logger } from 'nestjs-pino';
 import { WsAdapter } from '@nestjs/platform-ws';
+import { VERSION_NEUTRAL, VersioningType } from '@nestjs/common';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -22,6 +24,20 @@ async function bootstrap() {
 
   app.useLogger(app.get(Logger));
   app.flushLogs();
+
+  const config = new DocumentBuilder()
+    .setTitle('Asistify Backend')
+    .setDescription('The Asistify API')
+    .setVersion('1.0')
+    .build();
+  const documentFactory = () => SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api', app, documentFactory);
+
+  app.enableVersioning({
+    type: VersioningType.HEADER,
+    header: 'X-API-Version',
+    defaultVersion: [VERSION_NEUTRAL],
+  });
 
   const logger = app.get(Logger);
 

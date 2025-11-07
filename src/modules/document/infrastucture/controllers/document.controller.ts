@@ -6,11 +6,12 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
-  Version,
   UseInterceptors,
   UploadedFile,
   Body,
   BadRequestException,
+  Logger,
+  Version,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { CreateDocumentUseCase } from '../../application/use-cases/document/create-document.use-case';
@@ -29,6 +30,7 @@ import { MinioService } from '../../../minio/minio.service';
 
 @Controller('documents')
 export class DocumentController {
+  private readonly logger = new Logger(DocumentController.name);
   constructor(
     private readonly createDocumentUseCase: CreateDocumentUseCase,
     private readonly findDocumentsUseCase: FindDocumentsUseCase,
@@ -85,24 +87,11 @@ export class DocumentController {
       originalName: file.originalname,
       extensionContent: file.mimetype,
       size: file.size,
-      filePath: uploadedFile.fileName,
+      filePath: uploadedFile.url,
       documentTypeId: body.documentTypeId,
       enterpriseId: body.enterpriseId,
     };
 
-    return await this.createDocumentUseCase.execute(dto);
-  }
-
-  @Version('1')
-  @ApiOperation({ summary: 'Create a new document' })
-  @ApiResponse({
-    status: 201,
-    description: 'The document has been successfully created.',
-    type: DocumentEntity,
-  })
-  @Post()
-  @HttpCode(201)
-  async create(dto: CreateDocumentDto): Promise<DocumentEntity> {
     return await this.createDocumentUseCase.execute(dto);
   }
 
