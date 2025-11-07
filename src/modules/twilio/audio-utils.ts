@@ -4,6 +4,7 @@
  */
 
 import { WaveFile } from 'wavefile';
+import config from '../../config/configuration';
 
 /**
  * Check if audio buffer contains actual signal (not silence)
@@ -22,7 +23,7 @@ export function hasAudioSignal(pcmBuffer: Buffer): boolean {
 
   const rms = Math.sqrt(sum / sampleCount);
   // Threshold for detecting audio
-  return rms > 300;
+  return rms > config().twilio.audioSignalThreshold;
 }
 
 /**

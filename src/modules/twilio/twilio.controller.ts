@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { TwilioService } from './twilio.service';
+import { Public } from '../auth/infrastructure/decorators/public.decorator';
 
 /**
  * Twilio Webhook Controller
@@ -80,6 +81,7 @@ export class TwilioWebhookController {
    * Returns TwiML instructions for how Twilio should handle the call.
    *
    */
+  @Public()
   @Post('webhook/voice')
   handleVoiceCall(
     @Body() body: any,
