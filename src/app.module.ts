@@ -11,6 +11,8 @@ import { TwilioModule } from './modules/twilio/twilio.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { DocumentModule } from './modules/document/document.module';
 import { MinioModule } from './modules/minio/minio.module';
+import { MembershipModule } from './modules/membership/membership.module';
+import { MembershipController } from './modules/membership/infrastructure/controller/membership.controller';
 
 @Module({
   imports: [
@@ -53,9 +55,10 @@ import { MinioModule } from './modules/minio/minio.module';
     ReceptionistModule,
     TwilioModule,
     DocumentModule,
+    MembershipModule,
     AuthModule,
   ],
-  controllers: [AppController],
+  controllers: [AppController, MembershipController],
   providers: [AppService, PrismaModule, SupabaseModule],
 })
 export class AppModule {}

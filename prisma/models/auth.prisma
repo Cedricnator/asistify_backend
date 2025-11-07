@@ -4,22 +4,23 @@ model Role {
   description String?   @db.VarChar(255)
   created_at  DateTime  @default(now()) @map("created_at")
   updated_at  DateTime  @updatedAt @map("updated_at")
-  profiles    Profile[]  
+  profiles    Profile[]
+
   @@map("role")
 }
 
 model Profile {
-  id            String   @id @default(cuid())
-  name          String   @db.VarChar(255)
-  email         String   @unique @db.VarChar(255)
-  password      String   @db.VarChar(255)
-  avatar        String?  @db.Text
-  phone_number  String?  @map("phone_number") @db.VarChar(20)
-  created_at    DateTime @default(now()) @map("created_at")
-  updated_at    DateTime @updatedAt @map("updated_at")
-  user_id       String   @unique @map("user_id")
+  id           String   @id @default(cuid())
+  name         String   @db.VarChar(255)
+  email        String   @unique @db.VarChar(255)
+  password     String   @db.VarChar(255)
+  avatar       String?
+  phone_number String?  @map("phone_number") @db.VarChar(20)
+  created_at   DateTime @default(now()) @map("created_at")
+  updated_at   DateTime @updatedAt @map("updated_at")
+  user_id      String   @unique @map("user_id")
   role_id      String   @map("role_id")
-
   roles        Role     @relation(fields: [role_id], references: [id])
+
   @@map("profile")
 }
