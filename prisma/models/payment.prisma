@@ -8,6 +8,8 @@ model Subscription {
   enterprise_id   String       @unique @map("enterprise_id")
   Enterprise      Enterprise[]
   payments        Payment[]
+  membership_id   String       @map("membership_id")
+  membership      Membership   @relation(fields: [membership_id], references: [id])
 
   @@map("subscription")
 }
