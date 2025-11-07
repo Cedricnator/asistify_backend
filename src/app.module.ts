@@ -51,6 +51,7 @@ import {MembershipController} from "./modules/membership/infrastructure/controll
     }),
     ReceptionistModule,
     TwilioModule,
+    MembershipModule,
     AuthModule,
   ],
   controllers: [AppController, MembershipController],
