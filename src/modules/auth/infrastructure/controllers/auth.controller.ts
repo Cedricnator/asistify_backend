@@ -1,14 +1,14 @@
 import {
-    Body,
-    Controller,
-    Delete,
-    Get,
-    Param,
-    Patch,
-    Post,
-    Query,
-    UseGuards,
-    Version,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+  Version,
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { SupabaseAuthGuard } from '../guards/supabase-auth.guard';
@@ -27,45 +27,45 @@ import { UpdateUserDto } from '../dtos/update-user.dto';
 @UseGuards(SupabaseAuthGuard, RolesGuard)
 @Roles('admin')
 export class AuthController {
-    constructor(
-        private readonly createUserUseCase: CreateUserUseCase,
-        private readonly findUsersUseCase: FindUsersUseCase,
-        private readonly updateUserUseCase: UpdateUserUseCase,
-        private readonly deleteUserUseCase: DeleteUserUseCase,
-    ) {}
+  constructor(
+    private readonly createUserUseCase: CreateUserUseCase,
+    private readonly findUsersUseCase: FindUsersUseCase,
+    private readonly updateUserUseCase: UpdateUserUseCase,
+    private readonly deleteUserUseCase: DeleteUserUseCase,
+  ) {}
 
-    @Version('1')
-    @Post()
-    @ApiOperation({ summary: 'Create a new user' })
-    async create(@Body() dto: CreateUserDto): Promise<UserDto> {
-        return await this.createUserUseCase.execute(dto);
-    }
+  @Version('1')
+  @Post()
+  @ApiOperation({ summary: 'Create a new user' })
+  async create(@Body() dto: CreateUserDto): Promise<UserDto> {
+    return await this.createUserUseCase.execute(dto);
+  }
 
-    @Version('1')
-    @Get()
-    @ApiOperation({ summary: 'List registered users' })
-    async list(@Query('page') page = '1'): Promise<UserDto[]> {
-        return await this.findUsersUseCase.execute(Number(page));
-    }
+  @Version('1')
+  @Get()
+  @ApiOperation({ summary: 'List registered users' })
+  async list(@Query('page') page = '1'): Promise<UserDto[]> {
+    return await this.findUsersUseCase.execute(Number(page));
+  }
 
-    @Version('1')
-    @Patch(':id')
-    @ApiOperation({ summary: "Update a user's password" })
-    async update(
-        @Param('id') id: string,
-        @Body() dto: UpdateUserDto,
-    ): Promise<UserDto> {
-        const command = {
-            id,
-            updates: dto,
-        };
-        return await this.updateUserUseCase.execute(command);
-    }
+  @Version('1')
+  @Patch(':id')
+  @ApiOperation({ summary: "Update a user's password" })
+  async update(
+    @Param('id') id: string,
+    @Body() dto: UpdateUserDto,
+  ): Promise<UserDto> {
+    const command = {
+      id,
+      updates: dto,
+    };
+    return await this.updateUserUseCase.execute(command);
+  }
 
-    @Version('1')
-    @Delete(':id')
-    @ApiOperation({ summary: 'Remove a user' })
-    async remove(@Param('id') id: string): Promise<UserDto> {
-        return await this.deleteUserUseCase.execute(id);
-    }
+  @Version('1')
+  @Delete(':id')
+  @ApiOperation({ summary: 'Remove a user' })
+  async remove(@Param('id') id: string): Promise<UserDto> {
+    return await this.deleteUserUseCase.execute(id);
+  }
 }

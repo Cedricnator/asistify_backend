@@ -12,25 +12,25 @@ import { RolesGuard } from './infrastructure/guards/roles.guard';
 import { SupabaseAuthGuard } from './infrastructure/guards/supabase-auth.guard';
 
 @Module({
-    imports: [SupabaseModule],
-    controllers: [AuthController],
-    providers: [
-        CreateUserUseCase,
-        FindUsersUseCase,
-        UpdateUserUseCase,
-        DeleteUserUseCase,
-        {
-            provide: APP_GUARD,
-            useClass: SupabaseAuthGuard,
-        },
-        {
-            provide: APP_GUARD,
-            useClass: RolesGuard,
-        },
-        {
-            provide: USER_REPOSITORY,
-            useClass: SupabaseAuthRepository,
-        },
-    ],
+  imports: [SupabaseModule],
+  controllers: [AuthController],
+  providers: [
+    CreateUserUseCase,
+    FindUsersUseCase,
+    UpdateUserUseCase,
+    DeleteUserUseCase,
+    {
+      provide: APP_GUARD,
+      useClass: SupabaseAuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: RolesGuard,
+    },
+    {
+      provide: USER_REPOSITORY,
+      useClass: SupabaseAuthRepository,
+    },
+  ],
 })
 export class AuthModule {}
