@@ -15,12 +15,13 @@ import * as Minio from 'minio';
       useFactory: async (
         configService: ConfigService,
       ): Promise<Minio.Client> => {
+        const useSSL = configService.get<string>('MINIO_USE_SSL', 'false');
         const client = new Minio.Client({
           endPoint: configService.getOrThrow<string>('MINIO_ENDPOINT'),
-          port: configService.getOrThrow<number>('MINIO_PORT'),
+          port: +configService.getOrThrow('MINIO_PORT'),
           accessKey: configService.getOrThrow<string>('MINIO_ACCESS_KEY'),
           secretKey: configService.getOrThrow<string>('MINIO_SECRET_KEY'),
-          useSSL: configService.get<boolean>('MINIO_USE_SSL', false),
+          useSSL: useSSL === 'true',
         });
 
         // Crear bucket si no existe
