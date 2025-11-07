@@ -9,6 +9,8 @@ import { SupabaseModule } from './modules/supabase/supabase.module';
 import { ReceptionistModule } from './modules/receptionist/receptionist.module';
 import { TwilioModule } from './modules/twilio/twilio.module';
 import { AuthModule } from './modules/auth/auth.module';
+import {MembershipModule} from "./modules/membership/membership.module";
+import {MembershipController} from "./modules/membership/infrastructure/controller/membership.controller";
 
 @Module({
     imports: [
@@ -50,8 +52,9 @@ import { AuthModule } from './modules/auth/auth.module';
         ReceptionistModule,
         TwilioModule,
         AuthModule,
+        MembershipModule
     ],
-    controllers: [AppController],
+    controllers: [AppController, MembershipController],
     providers: [AppService, PrismaModule, SupabaseModule],
 })
 export class AppModule {}
