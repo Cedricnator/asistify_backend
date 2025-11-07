@@ -22,13 +22,13 @@ model Functionality {
 }
 
 model MembershipFunctionality {
-  membership_id   String        @map("membership_id")
-  funtionality_id String        @map("funtionality_id")
-  created_at      DateTime      @default(now()) @map("created_at")
-  updated_at      DateTime      @updatedAt @map("updated_at")
-  functionality   Functionality @relation(fields: [funtionality_id], references: [id])
-  membership      Membership    @relation(fields: [membership_id], references: [id])
+  membership_id    String        @map("membership_id")
+  functionality_id String        @map("funtionality_id")
+  created_at       DateTime      @default(now()) @map("created_at")
+  updated_at       DateTime      @updatedAt @map("updated_at")
+  functionality    Functionality @relation(fields: [functionality_id], references: [id])
+  membership       Membership    @relation(fields: [membership_id], references: [id])
 
-  @@id([membership_id, funtionality_id])
-  @@map("membership_funtionality")
+  @@id([membership_id, functionality_id])
+  @@map("membership_functionality")
 }
