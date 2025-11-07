@@ -4,7 +4,7 @@ import type {MembershipRepository} from "../../domain/repositories/membership.re
 import {MembershipEntity} from "../../domain/entities/membership.entity";
 
 @Injectable()
-export class ListAllUseCase {
+export class ListAllMembershipsUseCase {
     constructor(
         @Inject(MEMBERSHIP_REPOSITORY)
         private readonly repository: MembershipRepository,
