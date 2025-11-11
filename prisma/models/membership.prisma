@@ -6,7 +6,7 @@ model Membership {
   created_at      DateTime                  @default(now()) @map("created_at")
   updated_at      DateTime                  @updatedAt @map("updated_at")
   functionalities MembershipFunctionality[]
-  Subscription    Subscription[]
+  subscription    Subscription[]
 
   @@map("membership")
 }
@@ -23,7 +23,7 @@ model Functionality {
 
 model MembershipFunctionality {
   membership_id    String        @map("membership_id")
-  functionality_id String        @map("funtionality_id")
+  functionality_id String        @map("functionality_id")
   created_at       DateTime      @default(now()) @map("created_at")
   updated_at       DateTime      @updatedAt @map("updated_at")
   functionality    Functionality @relation(fields: [functionality_id], references: [id])
