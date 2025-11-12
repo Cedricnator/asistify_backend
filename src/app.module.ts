@@ -14,6 +14,7 @@ import { MinioModule } from './modules/minio/minio.module';
 import { MembershipModule } from './modules/membership/membership.module';
 import { MembershipController } from './modules/membership/infrastructure/controller/membership.controller';
 import { ProfileModule } from './modules/profile/profile.module';
+import { EnterpriseModule } from './modules/enterprise/enterprise.module';
 
 @Module({
   imports: [
@@ -59,6 +60,7 @@ import { ProfileModule } from './modules/profile/profile.module';
     MembershipModule,
     AuthModule,
     ProfileModule,
+    EnterpriseModule,
   ],
   controllers: [AppController, MembershipController],
   providers: [AppService, PrismaModule, SupabaseModule],
