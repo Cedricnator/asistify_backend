@@ -1,5 +1,4 @@
 import {
-  IsMobilePhone,
   IsNotEmpty,
   IsNumber,
   IsOptional,
@@ -13,6 +12,10 @@ export class CreateReceptionistDto {
   readonly name: string;
 
   @IsString()
+  @IsNotEmpty()
+  readonly cellphone: string;
+
+  @IsUUID()
   readonly avatarId: string;
 
   @IsNumber()
@@ -23,7 +26,7 @@ export class CreateReceptionistDto {
   @IsNotEmpty()
   readonly levelDynamism: number;
 
-  @IsString()
+  @IsUUID()
   readonly enterpriseId: string;
 
   @IsOptional()

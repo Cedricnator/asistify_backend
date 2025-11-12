@@ -53,6 +53,8 @@ import { EnterpriseModule } from './modules/enterprise/enterprise.module';
               },
             },
     }),
+    PrismaModule,
+    SupabaseModule,
     MinioModule,
     ReceptionistModule,
     TwilioModule,
@@ -63,6 +65,6 @@ import { EnterpriseModule } from './modules/enterprise/enterprise.module';
     EnterpriseModule,
   ],
   controllers: [AppController, MembershipController],
-  providers: [AppService, PrismaModule, SupabaseModule],
+  providers: [AppService],
 })
 export class AppModule {}

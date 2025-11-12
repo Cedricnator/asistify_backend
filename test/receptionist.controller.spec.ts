@@ -1,10 +1,14 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
-import { ReceptionistController } from './receptionist.controller';
-import { ReceptionistService } from './receptionist.service';
-import { PrismaService } from '../prisma/prisma.service';
-import { CreateReceptionistDto } from './dto/create-receptionist.dto';
+import { PrismaService } from '../src/modules/prisma/prisma.service';
+import { CreateReceptionistDto } from '../src/modules/receptionist/infrastructure/dtos/create-receptionist.dto';
+import { ReceptionistController } from 'src/modules/receptionist/infrastructure/controllers/recepcionist.controller';
+import { CreateReceptionistUseCase } from 'src/modules/receptionist/application/use-cases/recepcionist/create-receptionist.use-case';
+import { FindReceptionistByIdUseCase } from 'src/modules/receptionist/application/use-cases/recepcionist/find-receptionist-by-id.use-case';
+import { UpdateReceptionistUseCase } from 'src/modules/receptionist/application/use-cases/recepcionist/update-receptionist.use-case';
+import { FindAllReceptionistsUseCase } from 'src/modules/receptionist/application/use-cases/recepcionist/find-all-receptionists.use-case';
+import { DeleteReceptionistUseCase } from 'src/modules/receptionist/application/use-cases/recepcionist/delete-receptionist.use-case';
 
 describe('ReceptionistController (Integration)', () => {
   let app: INestApplication;
@@ -18,7 +22,14 @@ describe('ReceptionistController (Integration)', () => {
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       controllers: [ReceptionistController],
-      providers: [ReceptionistService, PrismaService],
+      providers: [
+        CreateReceptionistUseCase,
+        PrismaService,
+        FindAllReceptionistsUseCase,
+        FindReceptionistByIdUseCase,
+        UpdateReceptionistUseCase,
+        DeleteReceptionistUseCase,
+      ],
     }).compile();
 
     app = moduleFixture.createNestApplication();
@@ -63,6 +74,7 @@ describe('ReceptionistController (Integration)', () => {
         avatarId: mockAvatarId,
         levelFormality: 7,
         levelDynamism: 6,
+        cellphone: '57912138123',
         enterpriseId: mockEnterpriseId,
         enterpriseInformation: 'Test enterprise info',
         clientInformation: 'Test client info',
