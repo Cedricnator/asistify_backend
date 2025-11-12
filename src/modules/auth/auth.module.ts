@@ -32,5 +32,6 @@ import { SupabaseAuthGuard } from './infrastructure/guards/supabase-auth.guard';
       useClass: SupabaseAuthRepository,
     },
   ],
+  exports: [CreateUserUseCase],
 })
 export class AuthModule {}

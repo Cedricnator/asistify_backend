@@ -13,6 +13,7 @@ import { DocumentModule } from './modules/document/document.module';
 import { MinioModule } from './modules/minio/minio.module';
 import { MembershipModule } from './modules/membership/membership.module';
 import { MembershipController } from './modules/membership/infrastructure/controller/membership.controller';
+import { ProfileModule } from './modules/profile/profile.module';
 
 @Module({
   imports: [
@@ -57,6 +58,7 @@ import { MembershipController } from './modules/membership/infrastructure/contro
     DocumentModule,
     MembershipModule,
     AuthModule,
+    ProfileModule,
   ],
   controllers: [AppController, MembershipController],
   providers: [AppService, PrismaModule, SupabaseModule],

@@ -13,7 +13,6 @@ model Profile {
   id           String   @id @default(cuid())
   name         String   @db.VarChar(255)
   email        String   @unique @db.VarChar(255)
-  password     String   @db.VarChar(255)
   avatar       String?
   phone_number String?  @map("phone_number") @db.VarChar(20)
   created_at   DateTime @default(now()) @map("created_at")
