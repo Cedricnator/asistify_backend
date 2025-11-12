@@ -1,5 +1,3 @@
-import { Receptionist } from '@prisma/client';
-
 export class ReceptionistEntity {
   id: string;
   name: string;

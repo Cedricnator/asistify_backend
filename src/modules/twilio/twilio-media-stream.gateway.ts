@@ -6,8 +6,8 @@ import {
 } from '@nestjs/websockets';
 import { Logger } from '@nestjs/common';
 import { Server } from 'ws';
-import { VoiceAgent } from '../receptionist/assistant/agents/voice-agent';
-import { ReceptionistPersonality } from '../receptionist/assistant/types/receptionist-personality';
+import { VoiceAgent } from '../receptionist/application/assistant/agents/voice-agent';
+import { ReceptionistPersonality } from '../receptionist/application/assistant/types/receptionist-personality';
 import { ConfigService } from '@nestjs/config';
 import {
   twilioToGeminiAudio,
@@ -15,9 +15,6 @@ import {
   hasAudioSignal,
   mulawToPcm8k,
 } from './audio-utils';
-import * as fs from 'fs';
-import * as path from 'path';
-import { WaveFile } from 'wavefile';
 
 /**
  * Twilio Media Streams Gateway
