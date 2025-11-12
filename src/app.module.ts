@@ -9,6 +9,7 @@ import { SupabaseModule } from './modules/supabase/supabase.module';
 import { ReceptionistModule } from './modules/receptionist/receptionist.module';
 import { TwilioModule } from './modules/twilio/twilio.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { CalendarModule } from './modules/calendar/calendar.module';
 
 @Module({
     imports: [
@@ -50,6 +51,7 @@ import { AuthModule } from './modules/auth/auth.module';
         ReceptionistModule,
         TwilioModule,
         AuthModule,
+        CalendarModule
     ],
     controllers: [AppController],
     providers: [AppService, PrismaModule, SupabaseModule],
