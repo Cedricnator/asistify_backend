@@ -14,8 +14,8 @@ model Receptionist {
   enterpriseId          String     @map("enterprise_id")
   avatarId              String     @map("avatar_id")
   metrics               Metric[]
-  avatar                Avatar     @relation(fields: [avatarId], references: [id])
-  enterprise            Enterprise @relation(fields: [enterpriseId], references: [id])
+  avatar                Avatar     @relation(fields: [avatarId], references: [id], onDelete: Cascade)
+  enterprise            Enterprise @relation(fields: [enterpriseId], references: [id], onDelete: Cascade)
 
   @@map("receptionist")
 }
@@ -38,7 +38,7 @@ model Metric {
   createdAt      DateTime     @default(now()) @map("created_at")
   updatedAt      DateTime     @updatedAt @map("updated_at")
   receptionistId String       @map("receptionist_id")
-  receptionist   Receptionist @relation(fields: [receptionistId], references: [id])
+  receptionist   Receptionist @relation(fields: [receptionistId], references: [id], onDelete: Cascade)
 
   @@map("metric")
 }

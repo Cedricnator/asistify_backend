@@ -6,10 +6,10 @@ model Subscription {
   created_at      DateTime     @default(now()) @map("created_at")
   updated_at      DateTime     @updatedAt @map("updated_at")
   enterprise_id   String       @unique @map("enterprise_id")
-  Enterprise      Enterprise[]
+  enterprise      Enterprise   @relation(fields: [enterprise_id], references: [id], onDelete: Cascade)
   payments        Payment[]
   membership_id   String       @map("membership_id")
-  membership      Membership   @relation(fields: [membership_id], references: [id])
+  membership      Membership   @relation(fields: [membership_id], references: [id], onDelete: Cascade)
 
   @@map("subscription")
 }
@@ -20,7 +20,7 @@ model Payment {
   created_at      DateTime     @default(now()) @map("created_at")
   updated_at      DateTime     @updatedAt @map("updated_at")
   subscription_id String       @map("subscription_id")
-  subscription    Subscription @relation(fields: [subscription_id], references: [id])
+  subscription    Subscription @relation(fields: [subscription_id], references: [id], onDelete: Cascade)
 
   @@map("payment")
 }

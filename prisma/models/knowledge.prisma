@@ -19,8 +19,8 @@ model Document {
   enterprise_id     String       @map("enterprise_id")
   created_at        DateTime     @default(now()) @map("created_at")
   updated_at        DateTime     @updatedAt @map("updated_at")
-  document_type     DocumentType @relation(fields: [document_type_id], references: [id])
-  enterprise        Enterprise   @relation(fields: [enterprise_id], references: [id])
+  document_type     DocumentType @relation(fields: [document_type_id], references: [id], onDelete: Cascade)
+  enterprise        Enterprise   @relation(fields: [enterprise_id], references: [id], onDelete: Cascade)
 
   @@map("document")
 }

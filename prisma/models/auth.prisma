@@ -19,7 +19,7 @@ model Profile {
   updated_at   DateTime @updatedAt @map("updated_at")
   user_id      String   @unique @map("user_id")
   role_id      String   @map("role_id")
-  roles        Role     @relation(fields: [role_id], references: [id])
+  roles        Role     @relation(fields: [role_id], references: [id], onDelete: Cascade)
 
   @@map("profile")
 }
