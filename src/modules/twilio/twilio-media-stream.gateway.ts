@@ -54,6 +54,8 @@ export class TwilioMediaStreamGateway
   private lastForcedEndAt: Map<any, number> = new Map();
   // When true for a client, handleMedia will not forward audio to Gemini
   private sendingBlocked: Map<any, boolean> = new Map();
+  // Duration of the last audio response sent to Twilio (ms)
+  private lastResponseDurationMs: Map<any, number> = new Map();
 
   constructor(private readonly configService: ConfigService) {}
 
@@ -89,6 +91,11 @@ export class TwilioMediaStreamGateway
 
     // Clean up audio buffer
     this.audioBuffers.delete(client);
+    this.lastNonSilentAt.delete(client);
+    this.lastForcedEndAt.delete(client);
+    this.sendingBlocked.delete(client);
+    this.lastResponseDurationMs.delete(client);
+    this.lastResponseDurationMs.delete(client);
   }
 
   /**
@@ -170,6 +177,11 @@ export class TwilioMediaStreamGateway
           `Received ${audioBuffer.length} bytes from Gemini (24kHz PCM)`,
         );
 
+        // Calculate duration of this response for timing silence detection
+        const durationMs = (audioBuffer.length / 2 / 24000) * 1000;
+        this.lastResponseDurationMs.set(client, durationMs);
+        this.logger.debug(`Response duration: ${durationMs.toFixed(0)}ms`);
+
         // Convert Gemini's PCM 24kHz to Twilio's μ-law 8kHz
         const twilioAudio = geminiToTwilioAudio(audioBuffer);
 
@@ -190,15 +202,22 @@ export class TwilioMediaStreamGateway
       // When the agent signals that generation is complete, re-enable sending
       if (typeof agent.onGenerationComplete === 'function') {
         agent.onGenerationComplete(async () => {
+          // Wait for the voice response to finish playing before re-enabling sending
+          const responseDuration = this.lastResponseDurationMs.get(client) || 0;
+          const bufferMs = 1500; // Extra buffer to account for network/processing delays
+          const totalWaitMs = responseDuration + bufferMs;
+
           this.logger.log(
-            'Re-enabled sending audio to Gemini after generation complete',
+            `Waiting ${totalWaitMs}ms for voice response to finish before re-enabling sending`,
           );
-          // DOUBLE DELAY, FOR TESTING PURPOSES
-          await new Promise((resolve) => {
-            setTimeout(resolve, 1000);
-          });
+
+          await new Promise((resolve) => setTimeout(resolve, totalWaitMs));
+
           this.lastNonSilentAt.set(client, Date.now());
           this.sendingBlocked.set(client, false);
+          this.logger.log(
+            'Re-enabled sending audio to Gemini after response playback',
+          );
         });
       }
 
@@ -219,15 +238,6 @@ export class TwilioMediaStreamGateway
 
       // Wait a moment for Gemini to fully initialize
       await new Promise((resolve) => setTimeout(resolve, 500));
-
-      // Clear buffered audio - skip it for now to test if that's causing the issue
-      const bufferedAudio = this.audioBuffers.get(client) || [];
-      if (bufferedAudio.length > 0) {
-        this.logger.log(
-          `Skipping ${bufferedAudio.length} buffered audio packets for testing`,
-        );
-        this.audioBuffers.set(client, []);
-      }
     } catch (error) {
       this.logger.error('Error starting voice agent:', error);
       this.logger.error('Error stack:', error.stack);
@@ -295,31 +305,34 @@ export class TwilioMediaStreamGateway
         // No signal detected in this packet. Check if we've seen
         // silence for longer than the configured threshold and
         // if so, optionally force end the turn.
-        const silenceThresholdMs = Number(
-          this.configService.get('SILENCE_FORCE_END_MS') || 700,
-        );
-        const throttleMs = Number(
-          this.configService.get('SILENCE_FORCE_THROTTLE_MS') || 2000,
-        );
+        // Only start silence detection after the user has spoken at least once.
+        if (this.lastNonSilentAt.has(client)) {
+          const silenceThresholdMs = Number(
+            this.configService.get('SILENCE_FORCE_END_MS') || 700,
+          );
+          const throttleMs = Number(
+            this.configService.get('SILENCE_FORCE_THROTTLE_MS') || 2000,
+          );
 
-        const lastNonSilent = this.lastNonSilentAt.get(client) || now;
-        const elapsed = now - lastNonSilent;
-        if (elapsed >= silenceThresholdMs) {
-          const lastForced = this.lastForcedEndAt.get(client) || 0;
-          if (now - lastForced >= throttleMs) {
-            try {
-              // Prevent further audio from being forwarded while we force end the turn
-              this.sendingBlocked.set(client, true);
-              await agent.forceEndTurn();
-              this.lastForcedEndAt.set(client, now);
-              this.logger.log(
-                `Forced turnComplete after ${elapsed}ms of silence (threshold=${silenceThresholdMs}ms)`,
-              );
-            } catch (err) {
-              this.logger.error(
-                'Error forcing turnComplete:',
-                err?.message || err,
-              );
+          const lastNonSilent = this.lastNonSilentAt.get(client)!;
+          const elapsed = now - lastNonSilent;
+          if (elapsed >= silenceThresholdMs) {
+            const lastForced = this.lastForcedEndAt.get(client) || 0;
+            if (now - lastForced >= throttleMs) {
+              try {
+                // Prevent further audio from being forwarded while we force end the turn
+                this.sendingBlocked.set(client, true);
+                await agent.forceEndTurn();
+                this.lastForcedEndAt.set(client, now);
+                this.logger.log(
+                  `Forced turnComplete after ${elapsed}ms of silence (threshold=${silenceThresholdMs}ms)`,
+                );
+              } catch (err) {
+                this.logger.error(
+                  'Error forcing turnComplete:',
+                  err?.message || err,
+                );
+              }
             }
           }
         }
@@ -354,6 +367,10 @@ export class TwilioMediaStreamGateway
     // Clean up all client-related data
     this.streamIds.delete(data.streamSid);
     this.audioBuffers.delete(client);
+    this.lastNonSilentAt.delete(client);
+    this.lastForcedEndAt.delete(client);
+    this.sendingBlocked.delete(client);
+    this.lastResponseDurationMs.delete(client);
 
     // Close the WebSocket connection
     try {
