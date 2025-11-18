@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { AuthModule } from '../auth/auth.module';
 import { CreateProfileUseCase } from './application/use-cases/profile/create-profile.use-case';
 import { FindProfileByIdUseCase } from './application/use-cases/profile/find-profile-by-id.use-case';
 import { FindProfileByEmailUseCase } from './application/use-cases/profile/find-profile-by-email.use-case';
@@ -14,7 +13,6 @@ import { ProfileController } from './infrastructure/controllers/profile.controll
 import { RoleController } from './infrastructure/controllers/role.controller';
 
 @Module({
-  imports: [AuthModule],
   providers: [
     CreateProfileUseCase,
     FindProfileByIdUseCase,
@@ -33,5 +31,6 @@ import { RoleController } from './infrastructure/controllers/role.controller';
     },
   ],
   controllers: [ProfileController, RoleController],
+  exports: [CreateProfileUseCase],
 })
 export class ProfileModule {}
