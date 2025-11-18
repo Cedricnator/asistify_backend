@@ -44,7 +44,7 @@ export class ChunkPrismaRepository implements ChunkRepository {
         gen_random_uuid()::text, $1, $2, $3::vector, $4::text[], $5::jsonb,
         $6, $7, NOW()
       )
-      RETURNING *
+      RETURNING id, index, content, keywords, metadata, document_id, document_chunk_type_id, created_at
       `,
       nextIndex,
       params.content,
@@ -97,7 +97,7 @@ export class ChunkPrismaRepository implements ChunkRepository {
         document_id, document_chunk_type_id, created_at
       )
       VALUES ${values}
-      RETURNING *
+      RETURNING id, index, content, keywords, metadata, document_id, document_chunk_type_id, created_at
     `;
 
     const chunks = await this.prismaService.$queryRawUnsafe<any[]>(query);
@@ -109,6 +109,16 @@ export class ChunkPrismaRepository implements ChunkRepository {
     const chunks = await this.prismaService.documentChunk.findMany({
       where: documentId ? { document_id: documentId } : undefined,
       orderBy: { index: 'asc' },
+      select: {
+        id: true,
+        index: true,
+        content: true,
+        keywords: true,
+        metadata: true,
+        document_id: true,
+        document_chunk_type_id: true,
+        created_at: true,
+      },
     });
 
     return chunks.map((chunk) => this.toDomain(chunk));
@@ -117,6 +127,16 @@ export class ChunkPrismaRepository implements ChunkRepository {
   async findById(id: string): Promise<ChunkEntity | null> {
     const chunk = await this.prismaService.documentChunk.findUnique({
       where: { id },
+      select: {
+        id: true,
+        index: true,
+        content: true,
+        keywords: true,
+        metadata: true,
+        document_id: true,
+        document_chunk_type_id: true,
+        created_at: true,
+      },
     });
 
     if (!chunk) return null;
@@ -192,7 +212,7 @@ export class ChunkPrismaRepository implements ChunkRepository {
       raw.index,
       raw.content,
       raw.document_id,
-      this.parseEmbedding(raw.embedding),
+      raw.embedding ? this.parseEmbedding(raw.embedding) : null,
       raw.keywords,
       raw.metadata,
       raw.document_chunk_type_id,
