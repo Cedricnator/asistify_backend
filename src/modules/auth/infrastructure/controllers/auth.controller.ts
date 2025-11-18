@@ -41,7 +41,7 @@ export class AuthController {
   @Version('1')
   @ApiOperation({ summary: 'Refresh session token' })
   @ApiResponse({ status: 200, description: 'Token refreshed successfully' })
-  @Post('/refresh-token')
+  @Post('/refresh')
   @HttpCode(200)
   async refreshToken(@Body() dto: RefreshTokenDto) {
     return await this.refreshTokenUseCase.execute(dto.refreshToken);

@@ -14,9 +14,12 @@ import { LoginUseCase } from './application/use-cases/login.use-case';
 import { RegisterUseCase } from './application/use-cases/register.use-case';
 import { RefreshTokenUseCase } from './application/use-cases/refresh-token.use-case';
 import { AuthController } from './infrastructure/controllers/auth.controller';
+import { PROFILE_REPOSITORY } from '../profile/domain/repositories/profile.repository';
+import { ProfilePrismaRepository } from '../profile/infrastructure/prisma/profile.prisma.repository';
+import { ProfileModule } from '../profile/profile.module';
 
 @Module({
-  imports: [SupabaseModule],
+  imports: [SupabaseModule, ProfileModule],
   controllers: [UserController, AuthController],
   providers: [
     LoginUseCase,
@@ -37,6 +40,10 @@ import { AuthController } from './infrastructure/controllers/auth.controller';
     {
       provide: USER_REPOSITORY,
       useClass: SupabaseAuthRepository,
+    },
+    {
+      provide: PROFILE_REPOSITORY,
+      useClass: ProfilePrismaRepository,
     },
   ],
   exports: [CreateUserUseCase],
