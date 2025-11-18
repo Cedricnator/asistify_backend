@@ -41,5 +41,6 @@ import { CreateChunksUseCase } from './application/use-cases/create-chunks.use-c
     },
   ],
   controllers: [ChunkTypeController, ChunkController],
+  exports: [IngestionService, RetrivalService],
 })
 export class ChunkModule {}
