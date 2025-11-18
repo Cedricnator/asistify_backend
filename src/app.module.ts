@@ -15,6 +15,7 @@ import { MembershipModule } from './modules/membership/membership.module';
 import { MembershipController } from './modules/membership/infrastructure/controller/membership.controller';
 import { ProfileModule } from './modules/profile/profile.module';
 import { EnterpriseModule } from './modules/enterprise/enterprise.module';
+import { ChunkModule } from './modules/chunks/chunk.module';
 
 @Module({
   imports: [
@@ -63,6 +64,7 @@ import { EnterpriseModule } from './modules/enterprise/enterprise.module';
     AuthModule,
     ProfileModule,
     EnterpriseModule,
+    ChunkModule,
   ],
   controllers: [AppController, MembershipController],
   providers: [AppService],
