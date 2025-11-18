@@ -243,8 +243,16 @@ VALUES
 
 
 -- =====================================================
--- Chunk Types
+-- Roles
 -- =====================================================
+INSERT INTO role (id, name, description, created_at, updated_at) 
+VALUES 
+  ('550e8400-e29b-41d4-a716-446655440000', 'Admin', 'Administrator with full access', NOW(), NOW()),
+  ('550e8400-e29b-41d4-a716-446655440002', 'Enterprise Owner', 'Owner of an enterprise account', NOW(), NOW());
+
+-- -- =====================================================
+-- -- Chunk Types
+-- -- =====================================================
 INSERT INTO document_chunk_type (id, name, created_at, updated_at) 
 VALUES 
   ('6e199a75-67d8-4dfd-bbbe-5491e5c9faf2', 'General', NOW(), NOW());
