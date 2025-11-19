@@ -5,6 +5,8 @@ import { DashboardHomeUseCase } from './application/use-cases/find-dashboard-hom
 import { MetricsController } from './infrastructure/controllers/metrics.controller';
 import { CALL_HISTORY } from './domain/ports/out/call-history.port';
 import { LocalCallHistoryAdapter } from './infrastructure/adapters/local.call-history.adapter';
+import { OVERVIEW_DATA_PORT } from './domain/ports/out/overview-data.port';
+import { LocalOverviewDataAdapter } from './infrastructure/adapters/local.overview-data.adapter';
 
 @Module({
   imports: [],
@@ -18,6 +20,10 @@ import { LocalCallHistoryAdapter } from './infrastructure/adapters/local.call-hi
     {
       provide: CALL_HISTORY,
       useClass: LocalCallHistoryAdapter,
+    },
+    {
+      provide: 'OVERVIEW_DATA_PORT',
+      useClass: LocalOverviewDataAdapter,
     },
   ],
   exports: [],
