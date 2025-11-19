@@ -3,16 +3,12 @@ import { DashboardHomeUseCase } from '../../application/use-cases/find-dashboard
 
 @Controller('dashboard')
 export class MetricsController {
-  constructor(private readonly dashboardHomeUseCase :DashboardHomeUseCase) {
-
-  }
+  constructor(private readonly dashboardHomeUseCase: DashboardHomeUseCase) {}
 
   @Get()
-  getMetrics() {
-
+  async getMetrics() {
     //TODO: replace "idEnterprise" with real idEnterprise from token
 
-    
-    return this.dashboardHomeUseCase.execute("idEnterprise");
+    return await this.dashboardHomeUseCase.execute('idEnterprise');
   }
 }
