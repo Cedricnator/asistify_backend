@@ -1,6 +1,4 @@
 import { Module } from '@nestjs/common';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
 import { LoggerModule } from 'nestjs-pino';
 import { ConfigModule } from '@nestjs/config';
 import configuration from './config/configuration';
@@ -12,10 +10,10 @@ import { AuthModule } from './modules/auth/auth.module';
 import { DocumentModule } from './modules/document/document.module';
 import { MinioModule } from './modules/minio/minio.module';
 import { MembershipModule } from './modules/membership/membership.module';
-import { MembershipController } from './modules/membership/infrastructure/controller/membership.controller';
 import { ProfileModule } from './modules/profile/profile.module';
 import { EnterpriseModule } from './modules/enterprise/enterprise.module';
 import { ChunkModule } from './modules/chunks/chunk.module';
+import { HealthModule } from './modules/health/health.module';
 import { MetricsModule } from './modules/metrics/metrics.module';
 
 @Module({
@@ -55,7 +53,9 @@ import { MetricsModule } from './modules/metrics/metrics.module';
               },
             },
     }),
+    // Global Modules
     PrismaModule,
+    // Specific Modules
     SupabaseModule,
     MinioModule,
     ReceptionistModule,
@@ -67,8 +67,9 @@ import { MetricsModule } from './modules/metrics/metrics.module';
     EnterpriseModule,
     ChunkModule,
     MetricsModule,
+    HealthModule,
   ],
-  controllers: [AppController, MembershipController],
-  providers: [AppService],
+  controllers: [],
+  providers: [],
 })
 export class AppModule {}
