@@ -16,6 +16,7 @@ import { MembershipController } from './modules/membership/infrastructure/contro
 import { ProfileModule } from './modules/profile/profile.module';
 import { EnterpriseModule } from './modules/enterprise/enterprise.module';
 import { ChunkModule } from './modules/chunks/chunk.module';
+import { MetricsModule } from './modules/metrics/metrics.module';
 
 @Module({
   imports: [
@@ -65,6 +66,7 @@ import { ChunkModule } from './modules/chunks/chunk.module';
     ProfileModule,
     EnterpriseModule,
     ChunkModule,
+    MetricsModule,
   ],
   controllers: [AppController, MembershipController],
   providers: [AppService],
