@@ -28,7 +28,7 @@ model Document {
 }
 
 model DocumentChunk {
-  id          String                      @id @default(cuid())
+  id          String                      @id @default(uuid())
   index       Int
   content     String                      @db.Text
   embedding   Unsupported("vector(1536)")

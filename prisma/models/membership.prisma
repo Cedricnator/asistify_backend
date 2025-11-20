@@ -1,5 +1,5 @@
 model Membership {
-  id              String                    @id @default(cuid())
+  id              String                    @id @default(uuid())
   name            String                    @unique @db.VarChar(100)
   description     String                    @db.VarChar(255)
   price           Int
@@ -12,7 +12,7 @@ model Membership {
 }
 
 model Functionality {
-  id          String                    @id @default(cuid())
+  id          String                    @id @default(uuid())
   name        String                    @unique @db.VarChar(100)
   created_at  DateTime                  @default(now()) @map("created_at")
   updated_at  DateTime                  @updatedAt @map("updated_at")
