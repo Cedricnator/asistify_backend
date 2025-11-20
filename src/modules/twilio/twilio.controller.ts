@@ -127,6 +127,7 @@ export class TwilioWebhookController {
    * Twilio sends status updates throughout the call lifecycle:
    * - queued, ringing, in-progress, completed, failed, busy, no-answer
    */
+  @Public()
   @Post('webhook/status')
   handleStatusCallback(@Body() body: any) {
     this.logger.log('Received status callback');

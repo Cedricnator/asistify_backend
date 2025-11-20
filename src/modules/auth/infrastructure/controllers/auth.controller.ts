@@ -1,71 +1,49 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  Param,
-  Patch,
-  Post,
-  Query,
-  UseGuards,
-  Version,
-} from '@nestjs/common';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { SupabaseAuthGuard } from '../guards/supabase-auth.guard';
-import { Roles } from '../decorators/roles.decorator';
-import { RolesGuard } from '../guards/roles.guard';
-import { CreateUserUseCase } from '../../application/use-cases/create-user.use-case';
-import { FindUsersUseCase } from '../../application/use-cases/find-users.use-case';
-import { UpdateUserUseCase } from '../../application/use-cases/update-user.use-case';
-import { DeleteUserUseCase } from '../../application/use-cases/delete-user.use-case';
+import { Body, Controller, HttpCode, Post, Version } from '@nestjs/common';
+import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { LoginDto } from '../dtos/login.dto';
+import { LoginUseCase } from '../../application/use-cases/login.use-case';
+import { RegisterUseCase } from '../../application/use-cases/register.use-case';
+import { RefreshTokenUseCase } from '../../application/use-cases/refresh-token.use-case';
 import { CreateUserDto } from '../dtos/create-user.dto';
-import { UserDto } from '../dtos/user.dto';
-import { UpdateUserDto } from '../dtos/update-user.dto';
+import { Public } from '../decorators/public.decorator';
+import { RefreshTokenDto } from '../dtos/refresh-token.dto';
 
-@ApiTags('users')
-@Controller('admin/users')
-@UseGuards(SupabaseAuthGuard, RolesGuard)
-@Roles('admin')
+@ApiTags('Auth Controller')
+@Controller('auth')
 export class AuthController {
   constructor(
-    private readonly createUserUseCase: CreateUserUseCase,
-    private readonly findUsersUseCase: FindUsersUseCase,
-    private readonly updateUserUseCase: UpdateUserUseCase,
-    private readonly deleteUserUseCase: DeleteUserUseCase,
+    private readonly loginUseCase: LoginUseCase,
+    private readonly registerUseCase: RegisterUseCase,
+    private readonly refreshTokenUseCase: RefreshTokenUseCase,
   ) {}
 
+  @Public()
   @Version('1')
-  @Post()
-  @ApiOperation({ summary: 'Create a new user' })
-  async create(@Body() dto: CreateUserDto): Promise<UserDto> {
-    return await this.createUserUseCase.execute(dto);
+  @ApiOperation({ summary: 'User login' })
+  @ApiResponse({ status: 200, description: 'Successful login' })
+  @Post('/login')
+  @HttpCode(200)
+  async login(@Body() dto: LoginDto) {
+    return await this.loginUseCase.execute(dto);
   }
 
+  @Public()
   @Version('1')
-  @Get()
-  @ApiOperation({ summary: 'List registered users' })
-  async list(@Query('page') page = '1'): Promise<UserDto[]> {
-    return await this.findUsersUseCase.execute(Number(page));
+  @ApiOperation({ summary: 'User registration' })
+  @ApiResponse({ status: 201, description: 'Successful registration' })
+  @Post('/register')
+  @HttpCode(201)
+  async register(@Body() dto: CreateUserDto) {
+    return await this.registerUseCase.execute(dto);
   }
 
+  @Public()
   @Version('1')
-  @Patch(':id')
-  @ApiOperation({ summary: "Update a user's password" })
-  async update(
-    @Param('id') id: string,
-    @Body() dto: UpdateUserDto,
-  ): Promise<UserDto> {
-    const command = {
-      id,
-      updates: dto,
-    };
-    return await this.updateUserUseCase.execute(command);
-  }
-
-  @Version('1')
-  @Delete(':id')
-  @ApiOperation({ summary: 'Remove a user' })
-  async remove(@Param('id') id: string): Promise<UserDto> {
-    return await this.deleteUserUseCase.execute(id);
+  @ApiOperation({ summary: 'Refresh session token' })
+  @ApiResponse({ status: 200, description: 'Token refreshed successfully' })
+  @Post('/refresh')
+  @HttpCode(200)
+  async refreshToken(@Body() dto: RefreshTokenDto) {
+    return await this.refreshTokenUseCase.execute(dto.refreshToken);
   }
 }

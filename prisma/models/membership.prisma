@@ -26,8 +26,8 @@ model MembershipFunctionality {
   functionality_id String        @map("functionality_id")
   created_at       DateTime      @default(now()) @map("created_at")
   updated_at       DateTime      @updatedAt @map("updated_at")
-  functionality    Functionality @relation(fields: [functionality_id], references: [id])
-  membership       Membership    @relation(fields: [membership_id], references: [id])
+  functionality    Functionality @relation(fields: [functionality_id], references: [id], onDelete: Cascade)
+  membership       Membership    @relation(fields: [membership_id], references: [id], onDelete: Cascade)
 
   @@id([membership_id, functionality_id])
   @@map("membership_functionality")

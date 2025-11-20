@@ -26,6 +26,7 @@
   },
   "dependencies": {
     "@google/genai": "^1.28.0",
+    "@langchain/textsplitters": "^1.0.0",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.0.1",
@@ -44,14 +45,17 @@
     "crypto-js": "^4.2.0",
     "dotenv": "^17.2.3",
     "jose": "^6.1.0",
+    "mammoth": "^1.11.0",
     "minio": "^8.0.6",
     "nestjs-pino": "^4.4.1",
+    "pdf-parse": "^2.4.5",
     "pino-http": "^10.5.0",
     "prisma": "^6.17.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "twilio": "^5.10.4",
-    "wavefile": "^11.0.0"
+    "wavefile": "^11.0.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",

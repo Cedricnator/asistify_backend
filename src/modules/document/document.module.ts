@@ -12,9 +12,16 @@ import { DOCUMENT_REPOSITORY } from './domain/repositories/document.repository';
 import { DocumentPrismaRepository } from './infrastucture/prisma/document.prisma.repository';
 import { DocumentController } from './infrastucture/controllers/document.controller';
 import { DocumentTypeController } from './infrastucture/controllers/document-type.controller';
+import { ChunkModule } from '../chunks/chunk.module';
+import { TextExtractionService } from './application/services/text-extraction.service';
+import { PlainTextStrategy } from './infrastructure/strategies/plain-text.strategy';
+import { PdfStrategy } from './infrastructure/strategies/pdf.strategy';
+import { DocxStrategy } from './infrastructure/strategies/docx.strategy';
+import { ExcelStrategy } from './infrastructure/strategies/excel.strategy';
+import { MarkdownStrategy } from './infrastructure/strategies/markdown.strategy';
 
 @Module({
-  imports: [],
+  imports: [ChunkModule],
   providers: [
     CreateDocumentUseCase,
     FindDocumentsUseCase,
@@ -24,6 +31,13 @@ import { DocumentTypeController } from './infrastucture/controllers/document-typ
     CreateDocumentTypeUseCase,
     FindDocumentTypesUseCase,
     FindDocumentTypeUseCase,
+
+    TextExtractionService,
+    PlainTextStrategy,
+    PdfStrategy,
+    DocxStrategy,
+    ExcelStrategy,
+    MarkdownStrategy,
 
     {
       provide: DOCUMENT_TYPE_REPOSITORY,

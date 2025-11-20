@@ -1,6 +1,6 @@
--- =====================================================
--- Seed Data for Asistify Backend
--- =====================================================
+-- -- =====================================================
+-- -- Seed Data for Asistify Backend
+-- -- =====================================================
 
 -- Clean existing data
 DELETE FROM metric;
@@ -240,3 +240,19 @@ VALUES
   ('4fc9ff43-cfb7-4b3f-a1b2-01eeab4c7a29', 'General', NOW(), NOW()),
   ('d01d9195-875a-496e-a427-b97e28b66317', 'Specific', NOW(), NOW()),
   ('57d132bc-6c4a-48f2-9938-00c2d627af6a', 'Normative', NOW(), NOW());
+
+
+-- =====================================================
+-- Roles
+-- =====================================================
+INSERT INTO role (id, name, description, created_at, updated_at) 
+VALUES 
+  ('550e8400-e29b-41d4-a716-446655440000', 'Admin', 'Administrator with full access', NOW(), NOW()),
+  ('550e8400-e29b-41d4-a716-446655440002', 'Enterprise Owner', 'Owner of an enterprise account', NOW(), NOW());
+
+-- -- =====================================================
+-- -- Chunk Types
+-- -- =====================================================
+INSERT INTO document_chunk_type (id, name, created_at, updated_at) 
+VALUES 
+  ('6e199a75-67d8-4dfd-bbbe-5491e5c9faf2', 'General', NOW(), NOW());
