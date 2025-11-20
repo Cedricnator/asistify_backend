@@ -13,27 +13,42 @@ import { ENTERPRISE_REPOSITORY } from '../enterprise/domain/repositories/enterpr
 import { EnterprisePrismaRepository } from '../enterprise/infrastructure/prisma/enterprise.prisma.repository';
 import { PROFILE_REPOSITORY } from '../profile/domain/repositories/profile.repository';
 import { ProfilePrismaRepository } from '../profile/infrastructure/prisma/profile.prisma.repository';
+import { PLAN_REPOSITORY } from './domain/repositories/plan.repository';
+import { PlanRepositoryAdapter } from './infrastructure/prisma/plan.repository.adapter';
+import { PlansController } from './infrastructure/controllers/plans.controller';
+import { CreatePlanUseCase } from './application/use-cases/create-plan.use-case';
+import { UpdatePlanUseCase } from './application/use-cases/update-plan.use-case';
+import { ListPlansUseCase } from './application/use-cases/list-plans.use-case';
+import { GetPlanUseCase } from './application/use-cases/get-plan.use-case';
 
 @Module({
-  controllers: [TestPaymentController],
+  controllers: [TestPaymentController, PlansController],
   providers: [
     CreateCustomerUseCase,
-CreateSuscriptionUseCase,
-ListSuscriptionsUseCase,
-GetSuscriptionUseCase,
-CancelSuscriptionUseCase,
+    CreateSuscriptionUseCase,
+    ListSuscriptionsUseCase,
+    GetSuscriptionUseCase,
+    CancelSuscriptionUseCase,
+    CreatePlanUseCase,
+    UpdatePlanUseCase,
+    ListPlansUseCase,
+    GetPlanUseCase,
     {
       provide: ENTERPRISE_REPOSITORY,
       useClass: EnterprisePrismaRepository,
     },
     {
-        provide:PROFILE_REPOSITORY,
-        useClass:ProfilePrismaRepository
+      provide: PROFILE_REPOSITORY,
+      useClass: ProfilePrismaRepository
     },
     {
-        provide:SUSCRIPTION_REPOSITORY,
-        useClass:SuscriptionRepositoryAdapter
+      provide: SUSCRIPTION_REPOSITORY,
+      useClass: SuscriptionRepositoryAdapter
     },
+    {
+      provide: PLAN_REPOSITORY,
+      useClass: PlanRepositoryAdapter
+    }
 
   ],
   exports: [],

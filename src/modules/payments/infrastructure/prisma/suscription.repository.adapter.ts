@@ -2,14 +2,13 @@ import { PrismaService } from '../../../prisma/prisma.service';
 
 import { Injectable, Logger } from '@nestjs/common';
 import { SuscriptionRepository } from '../../domain/repositories/suscription.repository';
-import { PaymentMethodEntity } from '../../domain/entities/payment-method.entity';
+
 import { SuscriptionEntity } from '../../domain/entities/suscription.entity';
-import HmacSHA256 from 'crypto-js/hmac-sha256';
+
 import { KVPair } from '../../domain/entities/kvpair.entity';
-import { EnterpriseEntity } from 'src/modules/enterprise/domain/entities/enterprise.entity';
+
 import { ProfileEntity } from 'src/modules/profile/domain/entities/profile.entity';
-import { Membership } from '@prisma/client';
-import { MembershipEntity } from 'src/modules/membership/domain/entities/membership.entity';
+
 import { FlowRepositoryAdapter } from '../pagosflow/flow.repository.adapter';
 
 

@@ -1,8 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { CreateSuscriptionCommand } from '../../domain/commands/create-suscription.command';
-import { MembershipEntity } from 'src/modules/membership/domain/entities/membership.entity';
+
 import { SUSCRIPTION_REPOSITORY, type SuscriptionRepository } from '../../domain/repositories/suscription.repository';
-import { SuscriptionEntity } from '../../domain/entities/suscription.entity';
+
 import { CreateCustomerCommand } from '../../domain/commands/create-customer.command';
 import { ENTERPRISE_REPOSITORY, type EnterpriseRepository } from 'src/modules/enterprise/domain/repositories/enterprise.repository';
 import { PROFILE_REPOSITORY, type ProfileRepository } from 'src/modules/profile/domain/repositories/profile.repository';
@@ -29,7 +28,7 @@ export class CreateCustomerUseCase {
         return ""
     }
     return this.repository.createCustomer(
-      enterprise,
+      command.enterpriseId,
       profile)
   }
 }

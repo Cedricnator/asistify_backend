@@ -1,5 +1,4 @@
-import { EnterpriseEntity } from "src/modules/enterprise/domain/entities/enterprise.entity";
-import { PaymentMethodEntity } from "../entities/payment-method.entity";
+
 import { SuscriptionEntity } from "../entities/suscription.entity";
 import { ProfileEntity } from "src/modules/profile/domain/entities/profile.entity";
 
