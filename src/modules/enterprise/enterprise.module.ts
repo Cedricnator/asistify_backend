@@ -20,6 +20,10 @@ import { EnterpriseCategoryController } from './infrastructure/controllers/enter
 import { EnterpriseProfileController } from './infrastructure/controllers/enterprise-profile.controller';
 import { EnterpriseCategoryPrismaRepository } from './infrastructure/prisma/enterprise-category.prisma.repostory';
 import { EnterpriseProfilePrismaRepository } from './infrastructure/prisma/enterprise-profile.prisma.repository';
+import { FindProfileByIdUseCase } from '../profile/application/use-cases/profile/find-profile-by-id.use-case';
+import { ProfileModule } from '../profile/profile.module';
+import { SUSCRIPTION_REPOSITORY } from '../payments/domain/repositories/suscription.repository';
+import { SuscriptionRepositoryAdapter } from '../payments/infrastructure/prisma/suscription.repository.adapter';
 
 @Module({
   providers: [
@@ -50,11 +54,16 @@ import { EnterpriseProfilePrismaRepository } from './infrastructure/prisma/enter
       provide: ENTERPRISE_PROFILE_REPOSITORY,
       useClass: EnterpriseProfilePrismaRepository,
     },
+    {
+      provide: SUSCRIPTION_REPOSITORY,
+      useClass: SuscriptionRepositoryAdapter
+    }
   ],
   controllers: [
     EnterpriseController,
     EnterpriseCategoryController,
     EnterpriseProfileController,
   ],
+  imports:[ProfileModule]
 })
 export class EnterpriseModule {}

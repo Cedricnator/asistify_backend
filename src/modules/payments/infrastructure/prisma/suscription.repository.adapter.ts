@@ -29,14 +29,14 @@ export class SuscriptionRepositoryAdapter implements SuscriptionRepository {
     return sign
   }
   async createCustomer(
-    enterprise: EnterpriseEntity,
+    enterpriseId:string,
     profile: ProfileEntity,
   ): Promise<string> {
 
     let apiKey = KVPair.ApiKey();
     let name = profile.name
     let email = profile.email
-    let externalId = enterprise.id
+    let externalId = enterpriseId
     let params: KVPair[] = []
     params.push(apiKey)
     params.push(new KVPair("email", email))
@@ -100,8 +100,22 @@ export class SuscriptionRepositoryAdapter implements SuscriptionRepository {
 
     }
     const data = await res.json();
-    let suscriptionId = data.subscriptionId
+    let suscriptionId :string = data.subscriptionId
     let suscription = new SuscriptionEntity(suscriptionId, enterpriseId, membershipId, flowclientId,data.status==1,data.morose==0)
+    let currentDate=new Date()
+    let endDate=new Date()
+    endDate.setMonth((currentDate.getMonth()+1)%13)
+    this.prisma.subscription.create({
+      data:{
+        
+        mounth_duration:1,
+        start_date:currentDate,
+        end_date: endDate,
+        enterprise_id: enterpriseId,
+        membership_id: membershipId,
+        flow_id:suscriptionId
+      }
+    })
     return suscription;
   }
 

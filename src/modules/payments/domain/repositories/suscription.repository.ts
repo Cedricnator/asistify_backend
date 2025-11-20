@@ -8,7 +8,7 @@ export const SUSCRIPTION_REPOSITORY = Symbol('SUSCRIPTION_REPOSITORY');
 
 export interface SuscriptionRepository {
   createCustomer(
-      enterprise: EnterpriseEntity,
+      enterpriseId: string,
       profile: ProfileEntity,
     ): Promise<string>
     

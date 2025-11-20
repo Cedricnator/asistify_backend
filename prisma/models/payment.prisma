@@ -10,7 +10,7 @@ model Subscription {
   payments        Payment[]
   membership_id   String       @map("membership_id")
   membership      Membership   @relation(fields: [membership_id], references: [id], onDelete: Cascade)
-
+  flow_id         String
   @@map("subscription")
 }
 
