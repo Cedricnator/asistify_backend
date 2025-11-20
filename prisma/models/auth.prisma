@@ -10,16 +10,17 @@ model Role {
 }
 
 model Profile {
-  id           String   @id @default(cuid())
-  name         String   @db.VarChar(255)
-  email        String   @unique @db.VarChar(255)
-  avatar       String?
-  phone_number String?  @map("phone_number") @db.VarChar(20)
-  created_at   DateTime @default(now()) @map("created_at")
-  updated_at   DateTime @updatedAt @map("updated_at")
-  user_id      String   @unique @map("user_id")
-  role_id      String   @map("role_id")
-  roles        Role     @relation(fields: [role_id], references: [id], onDelete: Cascade)
+  id                  String              @id @default(cuid())
+  name                String              @db.VarChar(255)
+  email               String              @unique @db.VarChar(255)
+  avatar              String?
+  phone_number        String?             @map("phone_number") @db.VarChar(20)
+  created_at          DateTime            @default(now()) @map("created_at")
+  updated_at          DateTime            @updatedAt @map("updated_at")
+  user_id             String              @unique @map("user_id")
+  role_id             String              @map("role_id")
+  roles               Role                @relation(fields: [role_id], references: [id], onDelete: Cascade)
+  enterprise_profiles EnterpriseProfile[]
 
   @@map("profile")
 }
