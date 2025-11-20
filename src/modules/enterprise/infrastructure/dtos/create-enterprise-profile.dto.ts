@@ -1,4 +1,4 @@
-import { IsBoolean, IsNotEmpty, IsUUID } from 'class-validator';
+import { IsBoolean, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class CreateEnterpriseProfileDto {
   @IsUUID()
@@ -12,4 +12,8 @@ export class CreateEnterpriseProfileDto {
   @IsBoolean()
   @IsNotEmpty()
   isOwner: boolean;
+
+  @IsUUID()
+  @IsOptional()
+  membershipId:string;
 }
