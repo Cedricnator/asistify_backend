@@ -1,6 +1,6 @@
 import { PrismaService } from '../../../prisma/prisma.service';
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { SuscriptionRepository } from '../../domain/repositories/suscription.repository';
 import { PaymentMethodEntity } from '../../domain/entities/payment-method.entity';
 import { SuscriptionEntity } from '../../domain/entities/suscription.entity';
@@ -14,6 +14,7 @@ import { MembershipEntity } from 'src/modules/membership/domain/entities/members
 
 @Injectable()
 export class SuscriptionRepositoryAdapter implements SuscriptionRepository {
+  private readonly logger=new Logger(SuscriptionRepositoryAdapter.name)
   constructor(private readonly prisma: PrismaService) { }
 
   private FLOW_URL = "https://sandbox.flow.cl/api"
@@ -105,7 +106,8 @@ export class SuscriptionRepositoryAdapter implements SuscriptionRepository {
     let currentDate=new Date()
     let endDate=new Date()
     endDate.setMonth((currentDate.getMonth()+1)%13)
-    this.prisma.subscription.create({
+    this.logger.log(`handmade suscription ${JSON.stringify(suscription)}`)
+    let prismaSus=await this.prisma.subscription.create({
       data:{
         
         mounth_duration:1,
@@ -116,6 +118,7 @@ export class SuscriptionRepositoryAdapter implements SuscriptionRepository {
         flow_id:suscriptionId
       }
     })
+    this.logger.log(`prisma suscription ${JSON.stringify(prismaSus)}`)
     return suscription;
   }
 

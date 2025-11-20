@@ -22,14 +22,15 @@ export class CreateEnterpriseProfileUseCase {
   async execute(
     params: CreateEnterpriseProfileCommand,
   ): Promise<EnterpriseProfileEntity> {
-    let enterprise=await this.repo.create(params);
+    let enterpriseProfile=await this.repo.create(params);
   
     if (params.isOwner){
       let profile=await this.findProfileById.execute(params.profileId)
-      let customerId = await this.suscriptionRepository.createCustomer(enterprise.id,profile)
-      let suscription=await this.suscriptionRepository.createSuscription(customerId,params.membershipId!,enterprise.id)
+      let customerId = await this.suscriptionRepository.createCustomer(enterpriseProfile.id,profile)
+      let suscription=await this.suscriptionRepository.createSuscription(customerId,params.membershipId!,params.enterpriseId)
+      
     }
     
-    return enterprise
+    return enterpriseProfile
   }
 }
