@@ -7,12 +7,19 @@ import { DeleteEnterpriseUseCase } from './application/use-cases/enterprise/dele
 import { CreateEnterpriseCategoryUseCase } from './application/use-cases/enterprise-category/create-enterprise-category.use-case';
 import { FindEnterpriseCategoriesUseCase } from './application/use-cases/enterprise-category/find-enterprise-categories.use-case';
 import { FindEnterpriseCategoryByIdUseCase } from './application/use-cases/enterprise-category/find-enterprise-category-by-id.use-case';
+import { CreateEnterpriseProfileUseCase } from './application/use-cases/enterprise-profile/create-enterprise-profile.use-case';
+import { FindEnterpriseProfilesByEnterpriseUseCase } from './application/use-cases/enterprise-profile/find-enterprise-profiles-by-enterprise.use-case';
+import { FindEnterpriseProfilesByProfileUseCase } from './application/use-cases/enterprise-profile/find-enterprise-profiles-by-profile.use-case';
+import { DeleteEnterpriseProfileUseCase } from './application/use-cases/enterprise-profile/delete-enterprise-profile.use-case';
 import { ENTERPRISE_REPOSITORY } from './domain/repositories/enterprise.repository';
 import { ENTERPRISE_CATEGORY_REPOSITORY } from './domain/repositories/enterprise-category.repository';
+import { ENTERPRISE_PROFILE_REPOSITORY } from './domain/repositories/enterprise-profile.repository';
 import { EnterprisePrismaRepository } from './infrastructure/prisma/enterprise.prisma.repository';
 import { EnterpriseController } from './infrastructure/controllers/enterprise.controller';
 import { EnterpriseCategoryController } from './infrastructure/controllers/enterprise-category.controller';
+import { EnterpriseProfileController } from './infrastructure/controllers/enterprise-profile.controller';
 import { EnterpriseCategoryPrismaRepository } from './infrastructure/prisma/enterprise-category.prisma.repostory';
+import { EnterpriseProfilePrismaRepository } from './infrastructure/prisma/enterprise-profile.prisma.repository';
 
 @Module({
   providers: [
@@ -26,6 +33,11 @@ import { EnterpriseCategoryPrismaRepository } from './infrastructure/prisma/ente
     FindEnterpriseCategoriesUseCase,
     FindEnterpriseCategoryByIdUseCase,
 
+    CreateEnterpriseProfileUseCase,
+    FindEnterpriseProfilesByEnterpriseUseCase,
+    FindEnterpriseProfilesByProfileUseCase,
+    DeleteEnterpriseProfileUseCase,
+
     {
       provide: ENTERPRISE_REPOSITORY,
       useClass: EnterprisePrismaRepository,
@@ -34,7 +46,15 @@ import { EnterpriseCategoryPrismaRepository } from './infrastructure/prisma/ente
       provide: ENTERPRISE_CATEGORY_REPOSITORY,
       useClass: EnterpriseCategoryPrismaRepository,
     },
+    {
+      provide: ENTERPRISE_PROFILE_REPOSITORY,
+      useClass: EnterpriseProfilePrismaRepository,
+    },
   ],
-  controllers: [EnterpriseController, EnterpriseCategoryController],
+  controllers: [
+    EnterpriseController,
+    EnterpriseCategoryController,
+    EnterpriseProfileController,
+  ],
 })
 export class EnterpriseModule {}
