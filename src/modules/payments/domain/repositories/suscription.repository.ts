@@ -1,0 +1,23 @@
+import { EnterpriseEntity } from "src/modules/enterprise/domain/entities/enterprise.entity";
+import { PaymentMethodEntity } from "../entities/payment-method.entity";
+import { SuscriptionEntity } from "../entities/suscription.entity";
+import { ProfileEntity } from "src/modules/profile/domain/entities/profile.entity";
+
+
+export const SUSCRIPTION_REPOSITORY = Symbol('SUSCRIPTION_REPOSITORY');
+
+export interface SuscriptionRepository {
+  createCustomer(
+      enterpriseId: string,
+      profile: ProfileEntity,
+    ): Promise<string>
+    
+  createSuscription(
+    flowClientId:string,membershipId:string, enterpriseId:string
+  ): Promise<SuscriptionEntity>;
+  listSuscriptions(planId: string):Promise<SuscriptionEntity[]>;
+  getSuscription(subscriptionId: string,enterpriseId:string,flowClientId:string): Promise<SuscriptionEntity>;
+  
+
+  cancelSuscription(subscriptionId: string): Promise<string>;
+}

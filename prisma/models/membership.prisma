@@ -1,22 +1,21 @@
 model Membership {
-  id            String    @id @default(cuid())
-  profile_id     String    @map("profile_id")
-  enterprise_id  String    @map("enterprise_id")
-  role           String    @db.VarChar(100)
-  created_at     DateTime  @default(now()) @map("created_at")
-  updated_at     DateTime  @updatedAt @map("updated_at")
-
+  id              String                    @id @default(uuid())
+  name            String                    @unique @db.VarChar(100)
+  description     String                    @db.VarChar(255)
+  price           Int
+  created_at      DateTime                  @default(now()) @map("created_at")
+  updated_at      DateTime                  @updatedAt @map("updated_at")
   functionalities MembershipFunctionality[]
+  subscription    Subscription[]
 
   @@map("membership")
 }
 
 model Functionality {
-  id          String    @id @default(cuid())
-  name        String    @unique @db.VarChar(100)
-  description String    @db.VarChar(255)
-  created_at  DateTime  @default(now()) @map("created_at")
-  updated_at  DateTime  @updatedAt @map("updated_at")
+  id          String                    @id @default(uuid())
+  name        String                    @unique @db.VarChar(100)
+  created_at  DateTime                  @default(now()) @map("created_at")
+  updated_at  DateTime                  @updatedAt @map("updated_at")
   memberships MembershipFunctionality[]
 
   @@map("functionality")
@@ -24,13 +23,12 @@ model Functionality {
 
 model MembershipFunctionality {
   membership_id    String        @map("membership_id")
-  funtionality_id  String        @map("funtionality_id")
+  functionality_id String        @map("functionality_id")
   created_at       DateTime      @default(now()) @map("created_at")
   updated_at       DateTime      @updatedAt @map("updated_at")
+  functionality    Functionality @relation(fields: [functionality_id], references: [id], onDelete: Cascade)
+  membership       Membership    @relation(fields: [membership_id], references: [id], onDelete: Cascade)
 
-  membership      Membership    @relation(fields: [membership_id], references: [id])
-  functionality   Functionality @relation(fields: [funtionality_id], references: [id])
-
-  @@id([membership_id, funtionality_id])
-  @@map("membership_funtionality")
+  @@id([membership_id, functionality_id])
+  @@map("membership_functionality")
 }

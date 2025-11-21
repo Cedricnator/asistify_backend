@@ -1,5 +1,5 @@
 model EnterpriseCategory {
-  id          String       @id @default(cuid())
+  id          String       @id @default(uuid())
   name        String       @unique @db.VarChar(100)
   description String?      @db.VarChar(255)
   created_at  DateTime     @default(now()) @map("created_at")
@@ -10,17 +10,17 @@ model EnterpriseCategory {
 }
 
 model Enterprise {
-  id             String   @id @default(cuid())
-  name           String   @unique @db.VarChar(255)
-  created_at     DateTime @default(now()) @map("created_at")
-  updated_at     DateTime @updatedAt @map("updated_at")
-  category_id    String   @map("category_id")
-  subscription_id String?
-
-  category      EnterpriseCategory @relation(fields: [category_id], references: [id])
-  receptionists Receptionist[]
-  documents     Document[]
-  subscription  Subscription?      @relation(fields: [subscription_id], references: [id])
+  id                  String              @id @default(uuid())
+  name                String              @unique @db.VarChar(255)
+  created_at          DateTime            @default(now()) @map("created_at")
+  updated_at          DateTime            @updatedAt @map("updated_at")
+  category_id         String              @map("category_id")
+  subscription_id     String?
+  documents           Document[]
+  category            EnterpriseCategory  @relation(fields: [category_id], references: [id], onDelete: Cascade)
+  subscription        Subscription?
+  receptionists       Receptionist[]
+  enterprise_profiles EnterpriseProfile[]
 
   @@map("enterprise")
 }

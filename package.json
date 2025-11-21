@@ -27,28 +27,37 @@
   "dependencies": {
     "@google-cloud/local-auth": "^2.1.0",
     "@google/genai": "^1.28.0",
+    "@langchain/textsplitters": "^1.0.0",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.0.1",
-    "@nestjs/platform-express": "^11.0.1",
+    "@nestjs/platform-express": "^11.1.8",
+    "@nestjs/platform-socket.io": "^11.1.8",
     "@nestjs/platform-ws": "^11.1.8",
     "@nestjs/swagger": "^11.2.1",
     "@nestjs/websockets": "^11.1.8",
     "@prisma/adapter-pg": "^6.17.1",
     "@prisma/client": "^6.17.1",
     "@supabase/supabase-js": "^2.75.1",
+    "@types/minio": "^7.1.0",
+    "@types/multer": "^2.0.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
+    "crypto-js": "^4.2.0",
     "dotenv": "^17.2.3",
     "googleapis": "^105.0.0",
     "jose": "^6.1.0",
+    "mammoth": "^1.11.0",
+    "minio": "^8.0.6",
     "nestjs-pino": "^4.4.1",
+    "pdf-parse": "^2.4.5",
     "pino-http": "^10.5.0",
     "prisma": "^6.17.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "twilio": "^5.10.4",
-    "wavefile": "^11.0.0"
+    "wavefile": "^11.0.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",
@@ -59,6 +68,7 @@
     "@swc/cli": "^0.7.8",
     "@swc/core": "^1.13.5",
     "@swc/jest": "^0.2.39",
+    "@types/crypto-js": "^4.2.2",
     "@types/express": "^5.0.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^22.10.7",
@@ -85,7 +95,19 @@
       "json",
       "ts"
     ],
-    "rootDir": "src",
+    "rootDir": ".",
+    "roots": [
+      "<rootDir>/src",
+      "<rootDir>/test"
+    ],
+    "moduleNameMapper": {
+      "^src/(.*)$": "<rootDir>/src/$1",
+      "^test/(.*)$": "<rootDir>/test/$1"
+    },
+    "preset": "ts-jest",
+    "transformIgnorePatterns": [
+      "<rootDir>/node_modules/(?!jose)"
+    ],
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"

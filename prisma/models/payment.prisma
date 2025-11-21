@@ -1,27 +1,26 @@
 model Subscription {
-  id             String    @id @default(cuid())
-  mounth_duration Int       @map("mounth_duration")
-  start_date     DateTime  @map("start_date")
-  end_date       DateTime  @map("end_date")
-  created_at     DateTime  @default(now()) @map("created_at")
-  updated_at     DateTime  @updatedAt @map("updated_at")
-  enterprise_id   String    @map("enterprise_id") @unique
-
-  payments      Payment[]
-
-  Enterprise Enterprise[]
-
+  id              String       @id @default(uuid())
+  mounth_duration Int          @map("mounth_duration")
+  start_date      DateTime     @map("start_date")
+  end_date        DateTime     @map("end_date")
+  created_at      DateTime     @default(now()) @map("created_at")
+  updated_at      DateTime     @updatedAt @map("updated_at")
+  enterprise_id   String       @unique @map("enterprise_id")
+  enterprise      Enterprise   @relation(fields: [enterprise_id], references: [id], onDelete: Cascade)
+  payments        Payment[]
+  membership_id   String       @map("membership_id")
+  membership      Membership   @relation(fields: [membership_id], references: [id], onDelete: Cascade)
+  flow_id         String
   @@map("subscription")
 }
 
 model Payment {
-  id              String    @id @default(cuid())
-  amount          Float     @map("amount")
-  created_at      DateTime  @default(now()) @map("created_at")
-  updated_at      DateTime  @updatedAt @map("updated_at")
-  subscription_id String    @map("subscription_id")
-
-  subscription    Subscription @relation(fields: [subscription_id], references: [id])
+  id              String       @id @default(uuid())
+  amount          Float        @map("amount")
+  created_at      DateTime     @default(now()) @map("created_at")
+  updated_at      DateTime     @updatedAt @map("updated_at")
+  subscription_id String       @map("subscription_id")
+  subscription    Subscription @relation(fields: [subscription_id], references: [id], onDelete: Cascade)
 
   @@map("payment")
 }

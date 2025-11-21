@@ -1,0 +1,13 @@
+model EnterpriseProfile {
+  id            String     @id @default(uuid())
+  profile_id    String     @map("profile_id")
+  enterprise_id String     @map("enterprise_id")
+  is_owner      Boolean    @default(false) @map("is_owner")
+  created_at    DateTime   @default(now()) @map("created_at")
+  updated_at    DateTime   @updatedAt @map("updated_at")
+  profile       Profile    @relation(fields: [profile_id], references: [id], onDelete: Cascade)
+  enterprise    Enterprise @relation(fields: [enterprise_id], references: [id], onDelete: Cascade)
+
+  @@unique([profile_id, enterprise_id])
+  @@map("enterprise_profile")
+}
