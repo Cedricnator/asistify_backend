@@ -1,5 +1,5 @@
 model Subscription {
-  id              String       @id @default(cuid())
+  id              String       @id @default(uuid())
   mounth_duration Int          @map("mounth_duration")
   start_date      DateTime     @map("start_date")
   end_date        DateTime     @map("end_date")
@@ -15,7 +15,7 @@ model Subscription {
 }
 
 model Payment {
-  id              String       @id @default(cuid())
+  id              String       @id @default(uuid())
   amount          Float        @map("amount")
   created_at      DateTime     @default(now()) @map("created_at")
   updated_at      DateTime     @updatedAt @map("updated_at")

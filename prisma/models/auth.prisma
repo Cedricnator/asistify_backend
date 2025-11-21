@@ -1,5 +1,5 @@
 model Role {
-  id          String    @id @default(cuid())
+  id          String    @id @default(uuid())
   name        String    @unique @db.VarChar(100)
   description String?   @db.VarChar(255)
   created_at  DateTime  @default(now()) @map("created_at")
@@ -10,7 +10,7 @@ model Role {
 }
 
 model Profile {
-  id                  String              @id @default(cuid())
+  id                  String              @id @default(uuid())
   name                String              @db.VarChar(255)
   email               String              @unique @db.VarChar(255)
   avatar              String?

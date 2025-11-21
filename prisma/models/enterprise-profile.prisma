@@ -1,5 +1,5 @@
 model EnterpriseProfile {
-  id            String     @id @default(cuid())
+  id            String     @id @default(uuid())
   profile_id    String     @map("profile_id")
   enterprise_id String     @map("enterprise_id")
   is_owner      Boolean    @default(false) @map("is_owner")
