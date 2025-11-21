@@ -62,22 +62,27 @@ export class ChunkPrismaRepository implements ChunkRepository {
     if (params.length === 0) return [];
 
     const documentId = params[0].documentId;
-    const maxIndex = await this.prismaService.documentChunk.findFirst({
-      where: { document_id: documentId },
-      orderBy: { index: 'desc' },
-      select: { index: true },
-    });
 
-    const startIndex = maxIndex ? maxIndex.index + 1 : 0;
+    return await this.prismaService.$transaction(async (tx) => {
+      const maxIndex = await tx.documentChunk.findFirst({
+        where: { document_id: documentId },
+        orderBy: { index: 'desc' },
+        select: { index: true },
+      });
 
-    const values = params
-      .map((param, idx) => {
-        const embeddingString = `[${param.embedding.join(',')}]`;
-        const keywordsArray = `{${param.keywords.map((k) => `"${k.replace(/"/g, '\\"')}"`).join(',')}}`;
-        const metadataJson = JSON.stringify(param.metadata).replace(/'/g, "''");
-        const content = param.content.replace(/'/g, "''");
+      const startIndex = maxIndex ? maxIndex.index + 1 : 0;
 
-        return `(
+      const values = params
+        .map((param, idx) => {
+          const embeddingString = `[${param.embedding.join(',')}]`;
+          const keywordsArray = `{${param.keywords.map((k) => `"${k.replace(/"/g, '\\"')}"`).join(',')}}`;
+          const metadataJson = JSON.stringify(param.metadata).replace(
+            /'/g,
+            "''",
+          );
+          const content = param.content.replace(/'/g, "''");
+
+          return `(
           gen_random_uuid()::text,
           ${startIndex + idx},
           '${content}',
@@ -88,10 +93,10 @@ export class ChunkPrismaRepository implements ChunkRepository {
           '${param.documentChunkTypeId}',
           NOW()
         )`;
-      })
-      .join(',');
+        })
+        .join(',');
 
-    const query = `
+      const query = `
       INSERT INTO document_chunk (
         id, index, content, embedding, keywords, metadata,
         document_id, document_chunk_type_id, created_at
@@ -100,9 +105,9 @@ export class ChunkPrismaRepository implements ChunkRepository {
       RETURNING id, index, content, keywords, metadata, document_id, document_chunk_type_id, created_at
     `;
 
-    const chunks = await this.prismaService.$queryRawUnsafe<any[]>(query);
-
-    return chunks.map((chunk) => this.toDomain(chunk));
+      const chunks = await tx.$queryRawUnsafe<any[]>(query);
+      return chunks.map((chunk) => this.toDomain(chunk));
+    });
   }
 
   async findAll(documentId?: string): Promise<ChunkEntity[]> {

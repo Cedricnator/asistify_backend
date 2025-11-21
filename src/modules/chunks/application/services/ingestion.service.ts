@@ -92,7 +92,16 @@ export class IngestionService {
     });
 
     const docs = await splitter.createDocuments([content]);
-    return docs.map((doc) => doc.pageContent);
+    return docs
+      .map((doc) => doc.pageContent)
+      .filter((text) => {
+        // Filter out chunks that are too short or only contain metadata
+        const trimmed = text.trim();
+        if (trimmed.length < 10) return false;
+        // Filter out chunks that only contain "-- X of Y --" pattern
+        if (/^--\s*\d+\s+of\s+\d+\s*--$/.test(trimmed)) return false;
+        return true;
+      });
   }
 
   private async generateEmbeddings(
