@@ -4,6 +4,8 @@ import { Logger } from 'nestjs-pino';
 import { WsAdapter } from '@nestjs/platform-ws';
 import { VERSION_NEUTRAL, VersioningType } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { config } from 'dotenv';
+import { google } from 'googleapis';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -13,6 +15,8 @@ async function bootstrap() {
 
   // Use WsAdapter for WebSocket support (needed for Twilio Media Streams)
   app.useWebSocketAdapter(new WsAdapter(app));
+
+    
 
   // Enable CORS for development
   app.enableCors({
@@ -43,6 +47,8 @@ async function bootstrap() {
 
   // Enable graceful shutdown hooks
   app.enableShutdownHooks();
+    
+  
 
   const port = process.env.PORT ?? 3000;
   await app.listen(port);
@@ -65,4 +71,6 @@ async function bootstrap() {
   });
 }
 
+
 void bootstrap();
+

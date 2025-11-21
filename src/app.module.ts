@@ -15,6 +15,7 @@ import { EnterpriseModule } from './modules/enterprise/enterprise.module';
 import { ChunkModule } from './modules/chunks/chunk.module';
 import { HealthModule } from './modules/health/health.module';
 import { PaymentsModule } from './modules/payments/payments.module';
+import { CalendarModule } from './modules/calendar/calendar.module';
 
 @Module({
   imports: [
@@ -67,7 +68,8 @@ import { PaymentsModule } from './modules/payments/payments.module';
     EnterpriseModule,
     ChunkModule,
     HealthModule,
-    PaymentsModule
+    PaymentsModule,
+    CalendarModule
   ],
   controllers: [],
   providers: [],
