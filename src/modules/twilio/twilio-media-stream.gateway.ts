@@ -120,6 +120,10 @@ export class TwilioMediaStreamGateway
         await this.handleMedia(client, data);
         break;
 
+      case 'dtmf':
+        this.handleDtmf(client, data);
+        break;
+
       case 'stop':
         this.handleStreamStop(client, data);
         break;
@@ -295,13 +299,13 @@ export class TwilioMediaStreamGateway
       const hasSignal = hasAudioSignal(pcm16khz);
 
       const now = Date.now();
-      if (hasSignal) {
+      if (hasSignal && this.sendingBlocked.get(client) !== true) {
         // Update last-non-silent timestamp
         this.lastNonSilentAt.set(client, now);
 
         // Send the prepared payload to the VoiceAgent (Gemini)
         await agent.sendAudio(geminiPayload);
-      } else {
+      } else if (!hasSignal && this.sendingBlocked.get(client) !== true) {
         // No signal detected in this packet. Check if we've seen
         // silence for longer than the configured threshold and
         // if so, optionally force end the turn.
@@ -379,5 +383,27 @@ export class TwilioMediaStreamGateway
     } catch (error) {
       this.logger.error('Error closing WebSocket:', error.message);
     }
+  }
+
+  /**
+   * Handle 'mute' event - mute state changed
+   */
+  private handleDtmf(client: any, data: any) {
+    this.logger.log(`DTMF event received: ${JSON.stringify(data)}`);
+
+    const digit = data.dtmf.digit;
+    let isMuted: boolean = false;
+
+    switch (digit) {
+      case '1':
+        isMuted = true;
+        break;
+      case '0':
+        isMuted = false;
+        break;
+      default:
+    }
+    this.sendingBlocked.set(client, isMuted);
+    this.logger.log(`Mute state changed: ${isMuted ? 'muted' : 'unmuted'}`);
   }
 }
