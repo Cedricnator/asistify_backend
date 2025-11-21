@@ -1,12 +1,15 @@
--- -- =====================================================
--- -- Seed Data for Asistify Backend
--- -- =====================================================
+-- -- -- =====================================================
+-- -- -- Seed Data for Asistify Backend
+-- -- -- =====================================================
 
 -- Clean existing data
-DELETE FROM metric;
-DELETE FROM receptionist;
-DELETE FROM enterprise;
-DELETE FROM enterprise_category;
+-- DELETE FROM membership_functionality;
+-- DELETE FROM functionality;
+-- DELETE FROM membership;
+-- DELETE FROM metric;
+-- DELETE FROM receptionist;
+-- DELETE FROM enterprise;
+-- DELETE FROM enterprise_category;
 
 -- =====================================================
 -- Enterprise Categories
@@ -256,3 +259,65 @@ VALUES
 INSERT INTO document_chunk_type (id, name, created_at, updated_at) 
 VALUES 
   ('6e199a75-67d8-4dfd-bbbe-5491e5c9faf2', 'General', NOW(), NOW());
+
+-- =====================================================
+-- Memberships
+-- =====================================================
+INSERT INTO membership (id, name, description, price, created_at, updated_at)
+VALUES
+  ('1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d', 'Plan Básico', 'Para pequeños negocios que no quieren perder ni una llamada.', 19990, NOW(), NOW()),
+  ('2b3c4d5e-6f7a-8b9c-0d1e-2f3a4b5c6d7e', 'Plan Pro', 'La opción ideal para negocios en crecimiento que necesitan más capacidad.', 39990, NOW(), NOW()),
+  ('3c4d5e6f-7a8b-9c0d-1e2f-3a4b5c6d7e8f', 'Plan Empresarial', 'La solución completa para empresas que buscan escalar sin límites.', 79990, NOW(), NOW());
+
+-- =====================================================
+-- Functionalities
+-- =====================================================
+INSERT INTO functionality (id, name, created_at, updated_at)
+VALUES
+  ('f1a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c6', '1 recepcionista virtual', NOW(), NOW()),
+  ('f2b3c4d5-e6f7-a8b9-c0d1-e2f3a4b5c6d7', 'Hasta 300 llamadas al mes', NOW(), NOW()),
+  ('f3c4d5e6-f7a8-b9c0-d1e2-f3a4b5c6d7e8', 'Agendamiento automático', NOW(), NOW()),
+  ('f4d5e6f7-a8b9-c0d1-e2f3-a4b5c6d7e8f9', 'Memoria de hasta 50 clientes', NOW(), NOW()),
+  ('f5e6f7a8-b9c0-d1e2-f3a4-b5c6d7e8f9a0', 'Panel básico de métricas', NOW(), NOW()),
+  ('f6f7a8b9-c0d1-e2f3-a4b5-c6d7e8f9a0b1', 'Hasta 3 recepcionistas virtuales', NOW(), NOW()),
+  ('f7a8b9c0-d1e2-f3a4-b5c6-d7e8f9a0b1c2', 'Hasta 1.000 llamadas al mes', NOW(), NOW()),
+  ('f8b9c0d1-e2f3-a4b5-c6d7-e8f9a0b1c2d3', 'Agendamiento inteligente con recordatorios', NOW(), NOW()),
+  ('f9c0d1e2-f3a4-b5c6-d7e8-f9a0b1c2d3e4', 'Memoria de hasta 500 clientes', NOW(), NOW()),
+  ('f0d1e2f3-a4b5-c6d7-e8f9-a0b1c2d3e4f5', 'Panel avanzado de métricas con estimación de ingresos', NOW(), NOW()),
+  ('f1e2f3a4-b5c6-d7e8-f9a0-b1c2d3e4f5a6', 'Recepcionistas virtuales ilimitados', NOW(), NOW()),
+  ('f2f3a4b5-c6d7-e8f9-a0b1-c2d3e4f5a6b7', 'Llamadas ilimitadas', NOW(), NOW()),
+  ('f3a4b5c6-d7e8-f9a0-b1c2-d3e4f5a6b7c8', 'Agendamiento inteligente con optimización avanzada', NOW(), NOW()),
+  ('f4b5c6d7-e8f9-a0b1-c2d3-e4f5a6b7c8d9', 'Memoria de clientes ilimitada', NOW(), NOW()),
+  ('f5c6d7e8-f9a0-b1c2-d3e4-f5a6b7c8d9e0', 'Panel premium de métricas con reportes detallados', NOW(), NOW()),
+  ('f6d7e8f9-a0b1-c2d3-e4f5-a6b7c8d9e0f1', 'Soporte prioritario', NOW(), NOW());
+
+-- =====================================================
+-- Membership Functionalities
+-- =====================================================
+-- Plan Básico
+INSERT INTO membership_functionality (membership_id, functionality_id, created_at, updated_at)
+VALUES
+  ('1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d', 'f1a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c6', NOW(), NOW()),
+  ('1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d', 'f2b3c4d5-e6f7-a8b9-c0d1-e2f3a4b5c6d7', NOW(), NOW()),
+  ('1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d', 'f3c4d5e6-f7a8-b9c0-d1e2-f3a4b5c6d7e8', NOW(), NOW()),
+  ('1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d', 'f4d5e6f7-a8b9-c0d1-e2f3-a4b5c6d7e8f9', NOW(), NOW()),
+  ('1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d', 'f5e6f7a8-b9c0-d1e2-f3a4-b5c6d7e8f9a0', NOW(), NOW());
+
+-- Plan Pro
+INSERT INTO membership_functionality (membership_id, functionality_id, created_at, updated_at)
+VALUES
+  ('2b3c4d5e-6f7a-8b9c-0d1e-2f3a4b5c6d7e', 'f6f7a8b9-c0d1-e2f3-a4b5-c6d7e8f9a0b1', NOW(), NOW()),
+  ('2b3c4d5e-6f7a-8b9c-0d1e-2f3a4b5c6d7e', 'f7a8b9c0-d1e2-f3a4-b5c6-d7e8f9a0b1c2', NOW(), NOW()),
+  ('2b3c4d5e-6f7a-8b9c-0d1e-2f3a4b5c6d7e', 'f8b9c0d1-e2f3-a4b5-c6d7-e8f9a0b1c2d3', NOW(), NOW()),
+  ('2b3c4d5e-6f7a-8b9c-0d1e-2f3a4b5c6d7e', 'f9c0d1e2-f3a4-b5c6-d7e8-f9a0b1c2d3e4', NOW(), NOW()),
+  ('2b3c4d5e-6f7a-8b9c-0d1e-2f3a4b5c6d7e', 'f0d1e2f3-a4b5-c6d7-e8f9-a0b1c2d3e4f5', NOW(), NOW());
+
+-- Plan Empresarial
+INSERT INTO membership_functionality (membership_id, functionality_id, created_at, updated_at)
+VALUES
+  ('3c4d5e6f-7a8b-9c0d-1e2f-3a4b5c6d7e8f', 'f1e2f3a4-b5c6-d7e8-f9a0-b1c2d3e4f5a6', NOW(), NOW()),
+  ('3c4d5e6f-7a8b-9c0d-1e2f-3a4b5c6d7e8f', 'f2f3a4b5-c6d7-e8f9-a0b1-c2d3e4f5a6b7', NOW(), NOW()),
+  ('3c4d5e6f-7a8b-9c0d-1e2f-3a4b5c6d7e8f', 'f3a4b5c6-d7e8-f9a0-b1c2-d3e4f5a6b7c8', NOW(), NOW()),
+  ('3c4d5e6f-7a8b-9c0d-1e2f-3a4b5c6d7e8f', 'f4b5c6d7-e8f9-a0b1-c2d3-e4f5a6b7c8d9', NOW(), NOW()),
+  ('3c4d5e6f-7a8b-9c0d-1e2f-3a4b5c6d7e8f', 'f5c6d7e8-f9a0-b1c2-d3e4-f5a6b7c8d9e0', NOW(), NOW()),
+  ('3c4d5e6f-7a8b-9c0d-1e2f-3a4b5c6d7e8f', 'f6d7e8f9-a0b1-c2d3-e4f5-a6b7c8d9e0f1', NOW(), NOW());
