@@ -2,33 +2,23 @@ import { PrismaService } from '../../../prisma/prisma.service';
 
 import { Injectable, Logger } from '@nestjs/common';
 import { SuscriptionRepository } from '../../domain/repositories/suscription.repository';
-import { PaymentMethodEntity } from '../../domain/entities/payment-method.entity';
+
 import { SuscriptionEntity } from '../../domain/entities/suscription.entity';
-import HmacSHA256 from 'crypto-js/hmac-sha256';
+
 import { KVPair } from '../../domain/entities/kvpair.entity';
-import { EnterpriseEntity } from 'src/modules/enterprise/domain/entities/enterprise.entity';
+
 import { ProfileEntity } from 'src/modules/profile/domain/entities/profile.entity';
-import { Membership } from '@prisma/client';
-import { MembershipEntity } from 'src/modules/membership/domain/entities/membership.entity';
+
+import { FlowRepositoryAdapter } from '../pagosflow/flow.repository.adapter';
 
 
 @Injectable()
 export class SuscriptionRepositoryAdapter implements SuscriptionRepository {
   private readonly logger=new Logger(SuscriptionRepositoryAdapter.name)
+  private readonly flow=new FlowRepositoryAdapter();
   constructor(private readonly prisma: PrismaService) { }
 
-  private FLOW_URL = "https://sandbox.flow.cl/api"
-  private signParamsString(params: KVPair[]): string {
-    let secret = process.env.FLOW_SECRET!
-    let message = ""
-    for (let index = 0; index < params.length; index++) {
-      const param = params[index];
-      message += `${param.key}${param.value}`
-    }
-    console.log("result to mac ", message)
-    var sign = HmacSHA256(message, secret).toString()
-    return sign
-  }
+  
   async createCustomer(
     enterpriseId:string,
     profile: ProfileEntity,
@@ -44,22 +34,8 @@ export class SuscriptionRepositoryAdapter implements SuscriptionRepository {
     params.push(new KVPair("externalId", externalId))
     params.push(new KVPair("name", name))
 
-    let s = this.signParamsString(params);
-    const urlParams = new URLSearchParams({
-      apiKey: apiKey.value,
-      email,
-      externalId,
-      name,
-      s
-    })
-
-    const res = await fetch(`${this.FLOW_URL}/customer/create`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: urlParams.toString(),
-    })
+    
+    const res= await this.flow.post("/customer/create",params)
     if (!res.ok) {
       const text = await res.text().catch(() => "");
       throw new Error(`Request failed with ${res.status}: ${text}`);
@@ -80,21 +56,9 @@ export class SuscriptionRepositoryAdapter implements SuscriptionRepository {
     params.push(new KVPair("planId", membershipId))
 
 
-    let s = this.signParamsString(params);
-    const urlParams = new URLSearchParams({
-      apiKey: apiKey.value,
-      customerId: flowclientId,
-      planId,
-      s
-    })
+    
 
-    const res = await fetch(`${this.FLOW_URL}/subscription/create`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: urlParams.toString(),
-    })
+    const res = await this.flow.post("/subscription/create",params)
     if (!res.ok) {
       const text = await res.text().catch(() => "");
       throw new Error(`Request failed with ${res.status}: ${text}`);
@@ -130,21 +94,9 @@ export class SuscriptionRepositoryAdapter implements SuscriptionRepository {
     let apiKey = KVPair.ApiKey()
     params.push(apiKey)
     params.push(new KVPair("planId", planId))
-    let s = this.signParamsString(params);
-    let baseUrl = `${this.FLOW_URL}/api/subscription/list`
-    let urlParams = new URLSearchParams({
-      apiKey: apiKey.value,
-      planId,
-      s
-    }).toString();
-    const fullUrl = `${baseUrl}?${urlParams}`;
+    
 
-    const res = await fetch(fullUrl, {
-      method: "GET",
-      headers: {
-        "Accept": "application/json",
-      },
-    });
+    const res = await this.flow.get("/api/subscription/list",params);
     if (!res.ok) {
       const text = await res.text().catch(() => "");
       throw new Error(`GET failed with ${res.status}: ${text}`);
@@ -152,10 +104,12 @@ export class SuscriptionRepositoryAdapter implements SuscriptionRepository {
 
     let data = await res.json()
     let subs: SuscriptionEntity[] = []
+    let savedSubs=await this.prisma.subscription.findMany()
     data.data.forEach(rawSub => {
       //TODO: como encontrar el enterprise id...
+      let savedSub=savedSubs.find((sub)=>sub.flow_id==rawSub.subscriptionId);
       subs.push(new SuscriptionEntity(rawSub.subscriptionId,
-        rawSub.customerId, rawSub.planExternalId,
+        savedSub?.enterprise_id??"", rawSub.planExternalId,
         rawSub.customerId, rawSub.status == 1,
         rawSub.morose == 0))
     });
@@ -170,29 +124,17 @@ export class SuscriptionRepositoryAdapter implements SuscriptionRepository {
     let apiKey = KVPair.ApiKey()
     params.push(apiKey)
     params.push(new KVPair("subscriptionId", subscriptionId))
-    let s = this.signParamsString(params);
-    let baseUrl = `${this.FLOW_URL}/api/subscription/get`
-    let urlParams = new URLSearchParams({
-      apiKey: apiKey.value,
-      subscriptionId,
-      s
-    }).toString();
-    const fullUrl = `${baseUrl}?${urlParams}`;
+    
 
-    const res = await fetch(fullUrl, {
-      method: "GET",
-      headers: {
-        "Accept": "application/json",
-      },
-    });
+    const res = await this.flow.get("/api/subscription/get",params);
     if (!res.ok) {
       const text = await res.text().catch(() => "");
       throw new Error(`GET failed with ${res.status}: ${text}`);
     }
 
     let data = await res.json()
-    
-    let suscription = new SuscriptionEntity(data.subscriptionId, enterpriseId, data.clientExternalId, flowClientId,data.status == 1,
+    let prismaData=await this.prisma.subscription.findFirst({where:{flow_id:subscriptionId}})
+    let suscription = new SuscriptionEntity(data.subscriptionId, prismaData?.enterprise_id??"", prismaData?.membership_id!, flowClientId,data.status == 1,
         data.morose == 0)
     return suscription;
   }
@@ -208,20 +150,8 @@ export class SuscriptionRepositoryAdapter implements SuscriptionRepository {
 
 
 
-    let s = this.signParamsString(params);
-    const urlParams = new URLSearchParams({
-      apiKey: apiKey.value,
-      subscriptionId,
-      s
-    })
 
-    const res = await fetch(`${this.FLOW_URL}/subscription/cancel`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: urlParams.toString(),
-    })
+    const res = await this.flow.post("/subscription/cancel",params)
     if (!res.ok) {
       const text = await res.text().catch(() => "");
       throw new Error(`Request failed with ${res.status}: ${text}`);
