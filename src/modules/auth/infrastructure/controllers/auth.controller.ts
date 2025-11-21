@@ -21,7 +21,7 @@ export class AuthController {
   @Version('1')
   @ApiOperation({ summary: 'User login' })
   @ApiResponse({ status: 200, description: 'Successful login' })
-  @Post('/login')
+  @Post('login')
   @HttpCode(200)
   async login(@Body() dto: LoginDto) {
     return await this.loginUseCase.execute(dto);
@@ -31,7 +31,7 @@ export class AuthController {
   @Version('1')
   @ApiOperation({ summary: 'User registration' })
   @ApiResponse({ status: 201, description: 'Successful registration' })
-  @Post('/register')
+  @Post('register')
   @HttpCode(201)
   async register(@Body() dto: CreateUserDto) {
     return await this.registerUseCase.execute(dto);
@@ -41,7 +41,7 @@ export class AuthController {
   @Version('1')
   @ApiOperation({ summary: 'Refresh session token' })
   @ApiResponse({ status: 200, description: 'Token refreshed successfully' })
-  @Post('/refresh')
+  @Post('refresh')
   @HttpCode(200)
   async refreshToken(@Body() dto: RefreshTokenDto) {
     return await this.refreshTokenUseCase.execute(dto.refreshToken);
