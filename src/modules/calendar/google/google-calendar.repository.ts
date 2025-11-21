@@ -85,6 +85,8 @@ export class GoogleCalendarRepository implements CalendarRepository {
             timeZone
         }
 
+        
+
         try {
             const targetCalendar = calendar.calendars.get({ calendarId })
             var saved = await calendar.events.insert({ calendarId: calendarId, 
@@ -156,6 +158,8 @@ export class GoogleCalendarRepository implements CalendarRepository {
             dateTime: endDate.toISOString(),
             timeZone
         }
+
+        this.logger.log(`new startDatetime: ${startDate.toISOString()}, end: ${endDate.toISOString()}`)
         try{
             var response=await calendar.events.update({calendarId,eventId, requestBody: {  summary, 
                                                                         start: startObj, 

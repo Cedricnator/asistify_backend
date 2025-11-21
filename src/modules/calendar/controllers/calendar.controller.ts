@@ -68,7 +68,7 @@ export class CalendarController {
 
     @Version('1')
     @Get()
-    @ApiOperation({ summary: 'List calendar events' })
+    @ApiOperation({ summary: 'List calendars' })
     async listCalendars(): Promise<CalendarDto[]> {
         return await this.listCalendarsUseCase.execute();
     }
@@ -99,7 +99,7 @@ export class CalendarController {
             eventId:dto.eventId,
             name:dto.name,
             startDatetime:new Date(dto.startDatetime),
-            endDatetime:new Date(dto.startDatetime),
+            endDatetime:new Date(dto.endDatetime),
             timezone:dto.timezone??undefined
         }
         
@@ -109,7 +109,7 @@ export class CalendarController {
     @Version('1')
     @Delete('date')
     @ApiOperation({ summary: 'Remove an event' })
-    async remove(@Param('calendarId') calendarId: string,@Param('eventId') eventId: string): Promise<void> {
+    async remove(@Query('calendarId') calendarId: string,@Query('eventId') eventId: string): Promise<void> {
         return await this.deleteDateUseCase.execute({calendarId,eventId});
     }
 
