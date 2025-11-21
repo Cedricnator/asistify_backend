@@ -28,8 +28,9 @@ export default () => ({
     apiKeySecret: process.env.TWILIO_API_KEY_SECRET,
     twimlAppSid: process.env.TWILIO_TWIML_APP_SID,
     //CONFIG
-    audioSignalThreshold: parseInt(process.env.AUDIO_SIGNAL_THRESHOLD || '300', 10),
-    
+    audioSignalThreshold: parseInt(
+      process.env.AUDIO_SIGNAL_THRESHOLD || '300',
+      10,
+    ),
   },
-
 });
