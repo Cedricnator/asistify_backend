@@ -7,9 +7,10 @@ import { CALL_HISTORY } from './domain/ports/out/call-history.port';
 import { LocalCallHistoryAdapter } from './infrastructure/adapters/local.call-history.adapter';
 import { OVERVIEW_DATA_PORT } from './domain/ports/out/overview-data.port';
 import { LocalOverviewDataAdapter } from './infrastructure/adapters/local.overview-data.adapter';
+import { DocumentModule } from '../document/document.module';
 
 @Module({
-  imports: [],
+  imports: [DocumentModule],
   controllers: [MetricsController],
   providers: [
     DashboardHomeUseCase,

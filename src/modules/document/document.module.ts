@@ -19,9 +19,11 @@ import { PdfStrategy } from './infrastructure/strategies/pdf.strategy';
 import { DocxStrategy } from './infrastructure/strategies/docx.strategy';
 import { ExcelStrategy } from './infrastructure/strategies/excel.strategy';
 import { MarkdownStrategy } from './infrastructure/strategies/markdown.strategy';
+import { DOCUMENTS_COUNT } from './domain/ports/out/documents-count.port';
+import { DocumentsCountAdapter } from './infrastucture/documents-count.adapter';
 
 @Module({
-  imports: [ChunkModule],
+  imports: [ChunkModule, DocumentModule],
   providers: [
     CreateDocumentUseCase,
     FindDocumentsUseCase,
@@ -38,7 +40,6 @@ import { MarkdownStrategy } from './infrastructure/strategies/markdown.strategy'
     DocxStrategy,
     ExcelStrategy,
     MarkdownStrategy,
-
     {
       provide: DOCUMENT_TYPE_REPOSITORY,
       useClass: DocumentTypePrismaRepository,
@@ -47,7 +48,13 @@ import { MarkdownStrategy } from './infrastructure/strategies/markdown.strategy'
       provide: DOCUMENT_REPOSITORY,
       useClass: DocumentPrismaRepository,
     },
+    {
+      provide: DOCUMENTS_COUNT,
+      useClass: DocumentsCountAdapter,
+    },
+    DocumentsCountAdapter,
   ],
   controllers: [DocumentController, DocumentTypeController],
+  exports: [DOCUMENTS_COUNT, DocumentsCountAdapter],
 })
 export class DocumentModule {}
