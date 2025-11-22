@@ -31,6 +31,10 @@ import { RoleController } from './infrastructure/controllers/role.controller';
     },
   ],
   controllers: [ProfileController, RoleController],
-  exports: [CreateProfileUseCase,FindProfileByIdUseCase],
+  exports: [
+    CreateProfileUseCase,
+    FindProfileByIdUseCase,
+    FindProfileByEmailUseCase,
+  ],
 })
 export class ProfileModule {}
