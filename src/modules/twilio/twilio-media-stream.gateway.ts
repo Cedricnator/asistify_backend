@@ -117,7 +117,7 @@ export class TwilioMediaStreamGateway
         break;
 
       case 'media':
-        await this.handleMedia(client, data);
+        // await this.handleMedia(client, data);
         break;
 
       case 'dtmf':
@@ -239,6 +239,17 @@ export class TwilioMediaStreamGateway
       await agent.connect(personality);
 
       this.logger.log('Voice agent connected and ready');
+
+      // Send an initial text message to start the conversation
+      try {
+        await agent.sendText('Hola, quiero agendar una hora.');
+        this.logger.log('Sent initial greeting to Gemini');
+      } catch (err) {
+        this.logger.error(
+          'Error sending initial greeting:',
+          err?.message || err,
+        );
+      }
 
       // Wait a moment for Gemini to fully initialize
       await new Promise((resolve) => setTimeout(resolve, 500));
