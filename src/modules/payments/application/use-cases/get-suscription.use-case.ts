@@ -16,7 +16,6 @@ export class GetSuscriptionUseCase {
   execute(command: GetSuscriptionCommand): Promise<SuscriptionEntity> {
     return this.repository.getSuscription(
       command.suscriptionId,
-      command.enterpriseId,
-    command.flowclientId,)
+      )
   }
 }
