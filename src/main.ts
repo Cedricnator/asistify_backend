@@ -4,8 +4,7 @@ import { Logger } from 'nestjs-pino';
 import { WsAdapter } from '@nestjs/platform-ws';
 import { VERSION_NEUTRAL, VersioningType } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { config } from 'dotenv';
-import { google } from 'googleapis';
+import { AllExceptionsFilter } from './common/filters/exceptions.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -16,16 +15,21 @@ async function bootstrap() {
   // Use WsAdapter for WebSocket support (needed for Twilio Media Streams)
   app.useWebSocketAdapter(new WsAdapter(app));
 
-    
-
   // Enable CORS for development
   app.enableCors({
     origin: true, // Allow all origins in development
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'x-twilio-signature'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'x-twilio-signature',
+      // Allow custom API version header used by the frontend axios interceptor
+      'X-API-Version',
+    ],
   });
 
+  app.useGlobalFilters(new AllExceptionsFilter());
   app.useLogger(app.get(Logger));
   app.flushLogs();
 
@@ -47,8 +51,6 @@ async function bootstrap() {
 
   // Enable graceful shutdown hooks
   app.enableShutdownHooks();
-    
-  
 
   const port = process.env.PORT ?? 3000;
   await app.listen(port);
@@ -71,6 +73,4 @@ async function bootstrap() {
   });
 }
 
-
 void bootstrap();
-

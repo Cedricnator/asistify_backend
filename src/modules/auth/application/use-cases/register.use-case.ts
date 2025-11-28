@@ -25,10 +25,16 @@ export class RegisterUseCase {
     name: string;
     phoneNumber?: string;
     avatar?: string;
-  }): Promise<ProfileEntity> {
+  }): Promise<{
+    user: ProfileEntity;
+    accessToken: string;
+    refreshToken: string;
+  }> {
     this.logger.log(`Registering new user with email: ${params.email}`);
 
     let userId: string;
+    let accessToken: string;
+    let refreshToken: string;
 
     try {
       // 1. Create user in Supabase Auth
@@ -42,6 +48,8 @@ export class RegisterUseCase {
         `User created in Supabase with ID: ${authResult.user.id}`,
       );
       userId = authResult.user.id;
+      accessToken = authResult.accessToken;
+      refreshToken = authResult.refreshToken;
     } catch (error: unknown) {
       // If user already exists in Supabase, throw conflict error
       const authError = error as { code?: string; status?: number };
@@ -68,7 +76,11 @@ export class RegisterUseCase {
       });
 
       this.logger.log(`Profile created for user: ${userId}`);
-      return profile;
+      return {
+        user: profile,
+        accessToken: accessToken,
+        refreshToken: refreshToken,
+      };
     } catch (error) {
       // If profile creation fails, cleanup the Supabase user
       this.logger.error(

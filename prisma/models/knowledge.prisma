@@ -1,5 +1,5 @@
 model DocumentType {
-  id         String     @id @default(cuid())
+  id         String     @id @default(uuid())
   name       String     @unique @db.VarChar(100)
   created_at DateTime   @default(now()) @map("created_at")
   updated_at DateTime   @updatedAt @map("updated_at")
@@ -9,7 +9,7 @@ model DocumentType {
 }
 
 model Document {
-  id                String       @id @default(cuid())
+  id                String       @id @default(uuid())
   original_name     String       @db.VarChar(255)
   extension_content String       @db.VarChar(50)
   size              Int
@@ -45,7 +45,7 @@ model DocumentChunk {
 }
 
 model DocumentChunkType {
-  id          String     @id @default(cuid())
+  id          String     @id @default(uuid())
   name        String     @unique @db.VarChar(100)
   created_at  DateTime   @default(now()) @map("created_at")
   updated_at  DateTime   @updatedAt @map("updated_at")

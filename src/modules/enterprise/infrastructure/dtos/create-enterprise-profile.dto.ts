@@ -15,5 +15,5 @@ export class CreateEnterpriseProfileDto {
 
   @IsUUID()
   @IsOptional()
-  membershipId:string;
+  membershipId?: string;
 }

@@ -25,6 +25,9 @@ export class EnterpriseProfilePrismaRepository
     params: CreateEnterpriseProfileCommand,
   ): Promise<EnterpriseProfileEntity> {
     try {
+      this.logger.debug(
+        `Creating enterprise profile with profileId: ${params.profileId} and enterpriseId: ${params.enterpriseId}`,
+      );
       const enterpriseProfile =
         await this.prismaService.enterpriseProfile.create({
           data: EnterpriseProfileMapper.toCreate(params),

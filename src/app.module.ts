@@ -16,6 +16,7 @@ import { ChunkModule } from './modules/chunks/chunk.module';
 import { HealthModule } from './modules/health/health.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { CalendarModule } from './modules/calendar/calendar.module';
+import { MetricsModule } from './modules/metrics/metrics.module';
 
 @Module({
   imports: [
@@ -67,6 +68,7 @@ import { CalendarModule } from './modules/calendar/calendar.module';
     ProfileModule,
     EnterpriseModule,
     ChunkModule,
+    MetricsModule,
     HealthModule,
     PaymentsModule,
     CalendarModule
