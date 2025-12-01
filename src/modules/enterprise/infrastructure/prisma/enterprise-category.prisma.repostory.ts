@@ -3,7 +3,9 @@ import { CreateEnterpriseCategoryCommand } from '../../domain/commands/create-en
 import { EnterpriseCategoryEntity } from '../../domain/entities/enterprise-category.entity';
 import { EnterpriseCategoryRepository } from '../../domain/repositories/enterprise-category.repository';
 import { EnterpriseCategoryMapper } from '../mappers/enterprise-category.mapper';
+import { Injectable } from '@nestjs/common';
 
+@Injectable()
 export class EnterpriseCategoryPrismaRepository
   implements EnterpriseCategoryRepository
 {
