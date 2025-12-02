@@ -7,7 +7,7 @@ services:
       dockerfile: build/Dockerfile
       target: production
     ports:
-      - "36000:3000"
+      - '36000:3000'
     env_file:
       - .env
     environment:
@@ -18,11 +18,20 @@ services:
       - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
       - SUPABASE_AUTH_JWT_SECRET=${SUPABASE_AUTH_JWT_SECRET}
       - MINIO_ENDPOINT=minio
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
       - MINIO_PORT=9000
       - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY}
       - MINIO_SECRET_KEY=${MINIO_SECRET_KEY}
       - MINIO_BUCKET_NAME=${MINIO_BUCKET_NAME}
       - MINIO_USE_SSL=false
+      - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN}
+      - TWILIO_API_KEY_SID=${TWILIO_API_KEY_SID}
+      - TWILIO_API_KEY_SECRET=${TWILIO_API_KEY_SECRET}
+      - TWILIO_TWIML_APP_SID=${TWILIO_TWIML_APP_SID}
+      - FLOW_RETURN_URL=${FLOW_RETURN_URL}
+      - GEMINI_MODEL=${GEMINI_MODEL}
+      - GCLIENT_ID=${GCLIENT_ID}
+      - GCLIENT_SECRET=${GCLIENT_SECRET}
     networks:
       - asistify_network
     depends_on:
@@ -34,9 +43,9 @@ services:
     healthcheck:
       test:
         [
-          "CMD",
-          "node",
-          "-e",
+          'CMD',
+          'node',
+          '-e',
           "require('http').get('http://localhost:3000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})",
         ]
       interval: 30s
@@ -51,8 +60,8 @@ services:
     container_name: minio.asistify.local
     hostname: minio
     ports:
-      - "9000:9000" # API
-      - "9001:9001" # Console
+      - '9000:9000' # API
+      - '9001:9001' # Console
     environment:
       MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
       MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
@@ -62,7 +71,7 @@ services:
     networks:
       - asistify_network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
       interval: 30s
       timeout: 20s
       retries: 3

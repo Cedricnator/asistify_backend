@@ -1,7 +1,7 @@
 model EnterpriseProfile {
   id            String     @id @default(uuid())
-  profile_id    String     @map("profile_id")
-  enterprise_id String     @map("enterprise_id")
+  profile_id    String     @map("profile_id") @db.Uuid
+  enterprise_id String     @map("enterprise_id") @db.Uuid
   is_owner      Boolean    @default(false) @map("is_owner")
   created_at    DateTime   @default(now()) @map("created_at")
   updated_at    DateTime   @updatedAt @map("updated_at")

@@ -18,6 +18,7 @@ export class MembershipController {
   }
   @Public()
   @Post()
+  @Version('1')
   async create(
     @Body() createMembershipDto: MembershipEntity,
   ): Promise<MembershipEntity> {

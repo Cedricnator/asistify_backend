@@ -7,33 +7,28 @@ import { ListDatesUseCase } from './application/use-cases/list-date.use-case';
 import { GetDateUseCase } from './application/use-cases/get-date.use-case';
 import { UpdateDateUseCase } from './application/use-cases/update-date.use-case';
 import { DeleteDateUseCase } from './application/use-cases/delete-date.use-case';
-import { APP_GUARD } from '@nestjs/core';
-import { SupabaseAuthGuard } from '../auth/infrastructure/guards/supabase-auth.guard';
-import { RolesGuard } from '../auth/infrastructure/guards/roles.guard';
 import { GoogleCalendarRepository } from './google/google-calendar.repository';
 import { CALENDAR_REPOSITORY } from './domain/repositories/calendar.repository';
 import { ListCalendarsUseCase } from './application/use-cases/list-calendars.use-case';
 import { GOAuthController } from './controllers/oauth.controller';
 
-
-
 @Module({
-    imports:[SupabaseModule],
-    controllers: [CalendarController,GOAuthController],
-    providers: [
-        CreateCalendarUseCase,
-        CreateDateUseCase,
-        ListDatesUseCase,
-        GetDateUseCase,
-        UpdateDateUseCase,
-        DeleteDateUseCase,
-        ListCalendarsUseCase,
-        
-        {
-            provide: CALENDAR_REPOSITORY,
-            useClass: GoogleCalendarRepository,
-        },
+  imports: [SupabaseModule],
+  controllers: [CalendarController, GOAuthController],
+  providers: [
+    CreateCalendarUseCase,
+    CreateDateUseCase,
+    ListDatesUseCase,
+    GetDateUseCase,
+    UpdateDateUseCase,
+    DeleteDateUseCase,
+    ListCalendarsUseCase,
 
-    ],
+    {
+      provide: CALENDAR_REPOSITORY,
+      useClass: GoogleCalendarRepository,
+    },
+  ],
+  exports: [ListDatesUseCase],
 })
 export class CalendarModule {}
