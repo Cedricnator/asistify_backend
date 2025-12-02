@@ -1,9 +1,10 @@
-import { Receptionist } from '@prisma/client';
+import { Receptionist, Avatar } from '@prisma/client';
 import {
   ConcreteReceptionistBuilder,
   ReceptionistEntity,
 } from '../../domain/entities/receptionist.entity';
 import { CreateReceptionistCommand } from '../../domain/commands/create-recepcionist.command';
+import { ConcreteAvatarBuilder } from '../../domain/entities/avatar.entity';
 
 interface CreateRecepcionsitData {
   name: string;
@@ -20,8 +21,10 @@ interface CreateRecepcionsitData {
 }
 
 export class ReceptionistMapper {
-  static toDomain(raw: Receptionist): ReceptionistEntity {
-    return new ConcreteReceptionistBuilder()
+  static toDomain(
+    raw: Receptionist & { avatar?: Avatar | null },
+  ): ReceptionistEntity {
+    const builder = new ConcreteReceptionistBuilder()
       .withId(raw.id)
       .withName(raw.name)
       .withCellphone(raw.cellphone)
@@ -35,8 +38,20 @@ export class ReceptionistMapper {
       .withAvatarId(raw.avatarId)
       .withEnterpriseInformation(raw.enterpriseInformation)
       .withClientInformation(raw.clientInformation)
-      .withBusinessRestrictions(raw.businessRestrictions)
-      .build();
+      .withBusinessRestrictions(raw.businessRestrictions);
+
+    if (raw.avatar) {
+      builder.withAvatar(
+        new ConcreteAvatarBuilder()
+          .withId(raw.avatar.id)
+          .withUrl(raw.avatar.url)
+          .withCreatedAt(raw.avatar.createdAt)
+          .withUpdatedAt(raw.avatar.updatedAt)
+          .build(),
+      );
+    }
+
+    return builder.build();
   }
 
   static toCreate(raw: CreateReceptionistCommand): CreateRecepcionsitData {
@@ -55,7 +70,9 @@ export class ReceptionistMapper {
     };
   }
 
-  static toUpdate(raw: ReceptionistEntity): Partial<ReceptionistEntity> {
+  static toUpdate(
+    raw: ReceptionistEntity,
+  ): Omit<Partial<ReceptionistEntity>, 'avatar'> {
     return {
       id: raw.id,
       name: raw.name,
