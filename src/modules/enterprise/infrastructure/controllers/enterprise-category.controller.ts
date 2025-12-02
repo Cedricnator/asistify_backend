@@ -13,6 +13,7 @@ import { FindEnterpriseCategoriesUseCase } from '../../application/use-cases/ent
 import { FindEnterpriseCategoryByIdUseCase } from '../../application/use-cases/enterprise-category/find-enterprise-category-by-id.use-case';
 import { CreateEnterpriseCategoryDto } from '../dtos/create-enterprise-category.dto';
 import { EnterpriseCategoryEntity } from '../../domain/entities/enterprise-category.entity';
+import { Public } from 'src/modules/auth/infrastructure/decorators/public.decorator';
 
 @Controller('enterprise-categories')
 export class EnterpriseCategoryController {
@@ -32,6 +33,7 @@ export class EnterpriseCategoryController {
   }
 
   @Version('1')
+  @Public()
   @Get()
   @HttpCode(200)
   async findAll(): Promise<EnterpriseCategoryEntity[]> {
@@ -39,6 +41,7 @@ export class EnterpriseCategoryController {
   }
 
   @Version('1')
+  @Public()
   @Get(':id')
   @HttpCode(200)
   async findOne(
