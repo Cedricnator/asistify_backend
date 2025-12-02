@@ -38,7 +38,7 @@ export class GoogleCalendarMetricsAdapter implements CalendarMetricPort {
     confirmed: number;
     toConfirm: number;
   } {
-    let availableCount = 0;
+    let availableCount = 5;
     let confirmed = 0;
     let toConfirm = 0;
     const CONFIRMED_KEYWORD = 'confirmada';
