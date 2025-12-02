@@ -21,6 +21,7 @@ import { DeleteReceptionistUseCase } from '../../application/use-cases/recepcion
 import { FindAllReceptionistsUseCase } from '../../application/use-cases/recepcionist/find-all-receptionists.use-case';
 import { FindReceptionistByIdUseCase } from '../../application/use-cases/recepcionist/find-receptionist-by-id.use-case';
 import { UpdateReceptionistUseCase } from '../../application/use-cases/recepcionist/update-receptionist.use-case';
+import { EnterpriseId } from 'src/modules/auth/infrastructure/decorators/enterprise-id.decorator';
 
 @Controller('receptionists')
 export class ReceptionistController {
@@ -45,7 +46,7 @@ export class ReceptionistController {
   @Get()
   @HttpCode(200)
   async findAll(
-    @Query('enterpriseId', ParseUUIDPipe) enterpriseId: string,
+    @EnterpriseId() enterpriseId: string,
     @Query('page') page?: number,
     @Query('limit') limit?: number,
   ): Promise<PaginatedResponseDto<ReceptionistEntity>> {
