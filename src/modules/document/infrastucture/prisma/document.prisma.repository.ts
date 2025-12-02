@@ -71,6 +71,7 @@ export class DocumentPrismaRepository implements DocumentRepository {
   }
 
   async findAll(params: {
+    enterpriseId: string;
     page?: number;
     limit?: number;
     name?: string;
@@ -78,7 +79,11 @@ export class DocumentPrismaRepository implements DocumentRepository {
     this.logger.log(
       `Finding documents with params: ${JSON.stringify(params, null, 2)}`,
     );
-    const documents = await this.prismaService.document.findMany();
+    const documents = await this.prismaService.document.findMany({
+      where: {
+        enterprise_id: params.enterpriseId,
+      },
+    });
     return documents.map((doc) => this.mapToDomain(doc));
   }
 

@@ -31,6 +31,7 @@ import { MinioService } from '../../../minio/minio.service';
 import { TextExtractionService } from '../../application/services/text-extraction.service';
 import { IngestionService } from '../../../chunks/application/services/ingestion.service';
 import { EnterpriseId } from 'src/modules/auth/infrastructure/decorators/enterprise-id.decorator';
+import { strict } from 'node:assert';
 
 @ApiTags('Documents')
 @Controller('documents')
@@ -161,8 +162,12 @@ export class DocumentController {
   })
   @Get()
   @HttpCode(200)
-  async findAll(): Promise<DocumentEntity[]> {
-    return await this.findDocumentsUseCase.execute();
+  async findAll(
+    @EnterpriseId() enterpriseId: string,
+  ): Promise<DocumentEntity[]> {
+    return await this.findDocumentsUseCase.execute({
+      enterpriseId: enterpriseId,
+    });
   }
 
   @Version('1')

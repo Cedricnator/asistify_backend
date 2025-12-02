@@ -6,6 +6,7 @@ export const DOCUMENT_REPOSITORY = Symbol('DOCUMENT_REPOSITORY');
 export interface DocumentRepository {
   create(params: CreateDocumentCommand): Promise<DocumentEntity>;
   findAll(params: {
+    enterpriseId: string;
     page?: number;
     limit?: number;
     name?: string;
