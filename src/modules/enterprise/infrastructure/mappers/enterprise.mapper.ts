@@ -6,6 +6,7 @@ import { UpdateEnterpriseCommand } from '../../domain/commands/update-enterprise
 interface CreateEnterpriseData {
   name: string;
   category_id: string;
+  calendar_id: string;
   subscription_id?: string;
 }
 
@@ -23,6 +24,7 @@ export class EnterpriseMapper {
       raw.created_at,
       raw.updated_at,
       raw.category_id,
+      raw.calendar_id,
       raw.subscription_id,
     );
   }
@@ -31,6 +33,7 @@ export class EnterpriseMapper {
     return {
       name: params.name,
       category_id: params.categoryId,
+      calendar_id: params.calendarId,
       subscription_id: params.subscriptionId,
     };
   }

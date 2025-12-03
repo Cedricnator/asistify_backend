@@ -23,6 +23,8 @@ import { EnterpriseProfilePrismaRepository } from './infrastructure/prisma/enter
 import { ProfileModule } from '../profile/profile.module';
 import { SUSCRIPTION_REPOSITORY } from '../payments/domain/repositories/suscription.repository';
 import { SuscriptionRepositoryAdapter } from '../payments/infrastructure/prisma/suscription.repository.adapter';
+import { CreateCalendarUseCase } from '../calendar/application/use-cases/create-calendar.use-case';
+import { CalendarModule } from '../calendar/calendar.module';
 
 @Module({
   providers: [
@@ -40,6 +42,8 @@ import { SuscriptionRepositoryAdapter } from '../payments/infrastructure/prisma/
     FindEnterpriseProfilesByEnterpriseUseCase,
     FindEnterpriseProfilesByProfileUseCase,
     DeleteEnterpriseProfileUseCase,
+
+    CreateCalendarUseCase,
 
     {
       provide: ENTERPRISE_REPOSITORY,
@@ -63,6 +67,6 @@ import { SuscriptionRepositoryAdapter } from '../payments/infrastructure/prisma/
     EnterpriseCategoryController,
     EnterpriseProfileController,
   ],
-  imports: [ProfileModule],
+  imports: [ProfileModule, CalendarModule],
 })
 export class EnterpriseModule {}

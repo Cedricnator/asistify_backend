@@ -29,6 +29,6 @@ import { GOAuthController } from './controllers/oauth.controller';
       useClass: GoogleCalendarRepository,
     },
   ],
-  exports: [ListDatesUseCase],
+  exports: [ListDatesUseCase, CALENDAR_REPOSITORY],
 })
 export class CalendarModule {}
