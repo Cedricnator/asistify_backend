@@ -17,6 +17,7 @@ import { DeleteEnterpriseUseCase } from '../../application/use-cases/enterprise/
 import { CreateEnterpriseDto } from '../dtos/create-enterprise.dto';
 import { UpdateEnterpriseDto } from '../dtos/update-enterprise.dto';
 import { EnterpriseEntity } from '../../domain/entities/enterprise.entity';
+import { Public } from '../../../auth/infrastructure/decorators/public.decorator';
 
 @Controller('enterprises')
 export class EnterpriseController {
@@ -28,6 +29,7 @@ export class EnterpriseController {
   ) {}
 
   @Version('1')
+  @Public()
   @Post()
   @HttpCode(201)
   async create(@Body() dto: CreateEnterpriseDto): Promise<EnterpriseEntity> {
