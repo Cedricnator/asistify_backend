@@ -13,6 +13,7 @@ interface CreateEnterpriseData {
 interface UpdateEnterpriseData {
   name?: string;
   category_id?: string;
+  calendar_id?: string;
   subscription_id?: string;
 }
 
@@ -44,6 +45,7 @@ export class EnterpriseMapper {
     if (params.categoryId !== undefined) data.category_id = params.categoryId;
     if (params.subscriptionId !== undefined)
       data.subscription_id = params.subscriptionId;
+    if (params.calendarId !== undefined) data.calendar_id = params.calendarId;
     return data;
   }
 }
