@@ -30,6 +30,8 @@ import {
 import { MinioService } from '../../../minio/minio.service';
 import { TextExtractionService } from '../../application/services/text-extraction.service';
 import { IngestionService } from '../../../chunks/application/services/ingestion.service';
+import { EnterpriseId } from 'src/modules/auth/infrastructure/decorators/enterprise-id.decorator';
+import { strict } from 'node:assert';
 
 @ApiTags('Documents')
 @Controller('documents')
@@ -60,10 +62,6 @@ export class DocumentController {
           type: 'string',
           format: 'uuid',
         },
-        enterpriseId: {
-          type: 'string',
-          format: 'uuid',
-        },
       },
       required: ['file', 'documentTypeId', 'enterpriseId'],
     },
@@ -78,11 +76,11 @@ export class DocumentController {
   @HttpCode(201)
   @UseInterceptors(FileInterceptor('file'))
   async upload(
+    @EnterpriseId() enterpriseId: string,
     @UploadedFile() file: Express.Multer.File,
     @Body()
     body: {
       documentTypeId: string;
-      enterpriseId: string;
     },
   ): Promise<DocumentEntity> {
     if (!file) {
@@ -111,7 +109,7 @@ export class DocumentController {
       size: file.size,
       filePath: uploadedFile.fileName,
       documentTypeId: body.documentTypeId,
-      enterpriseId: body.enterpriseId,
+      enterpriseId: enterpriseId,
     };
 
     const document = await this.createDocumentUseCase.execute(dto);
@@ -164,8 +162,18 @@ export class DocumentController {
   })
   @Get()
   @HttpCode(200)
-  async findAll(): Promise<DocumentEntity[]> {
-    return await this.findDocumentsUseCase.execute();
+  async findAll(@EnterpriseId() enterpriseId: string): Promise<{
+    data: DocumentEntity[];
+    metadata: {
+      limit: number;
+      actualPage: number;
+      nextPage: number | null;
+      totalPages: number;
+    };
+  }> {
+    return await this.findDocumentsUseCase.execute({
+      enterpriseId: enterpriseId,
+    });
   }
 
   @Version('1')
