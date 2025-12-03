@@ -98,6 +98,9 @@ export class DocumentPrismaRepository implements DocumentRepository {
         },
         skip,
         take: limit,
+        include: {
+          document_chunks: true,
+        },
       }),
       this.prismaService.document.count({
         where: {
@@ -109,8 +112,36 @@ export class DocumentPrismaRepository implements DocumentRepository {
     const totalPages = Math.ceil(total / limit);
     const nextPage = page < totalPages ? page + 1 : null;
 
+    // Fetch chunk count for each document
+    // Helper to map chunk to domain entity
+    const mapToChunkDomain = (chunk: any) => {
+      return {
+        id: chunk.id,
+        index: chunk.index,
+        content: chunk.content,
+        documentId: chunk.document_id,
+        embedding: chunk.embedding ?? null,
+        keywords: chunk.keywords ?? [],
+        metadata: chunk.metadata,
+        document_chunk_type_id: chunk.document_chunk_type_id,
+        createdAt: chunk.created_at,
+      };
+    };
+
+    const data = await Promise.all(
+      documents.map(async (doc) => {
+        const chunkCount = doc.document_chunks ? doc.document_chunks.length : 0;
+        const chunks = doc.document_chunks ? doc.document_chunks.map(mapToChunkDomain) : [];
+        return {
+          ...this.mapToDomain(doc),
+          chunkCount,
+          chunks,
+        };
+      }),
+    );
+
     return {
-      data: documents.map((doc) => this.mapToDomain(doc)),
+      data,
       metadata: {
         limit,
         actualPage: page,
@@ -125,6 +156,9 @@ export class DocumentPrismaRepository implements DocumentRepository {
       this.logger.log(`Finding document with ID: ${id}`);
       const document = await this.prismaService.document.findUnique({
         where: { id },
+        include: {
+          document_chunks: true,
+        },
       });
 
       if (!document)
