@@ -6,5 +6,6 @@ export class EnterpriseEntity {
     public readonly updatedAt: Date,
     public readonly categoryId: string,
     public readonly subscriptionId?: string | null,
+    public readonly calendarId?: string,
   ) {}
 }

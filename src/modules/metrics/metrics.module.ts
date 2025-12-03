@@ -11,13 +11,20 @@ import { GoogleCalendarMetricsAdapter } from './infrastructure/adapters/google.c
 import { CalendarDatesAdapter } from '../calendar/infrastructure/calendar-dates.adapter';
 import { CalendarModule } from '../calendar/calendar.module';
 import { CALENDAR_DATES_PORT } from './domain/ports/out/calendar-dates.port';
+import { EnterpriseModule } from '../enterprise/enterprise.module';
+import { ENTERPRISE_REPOSITORY } from '../enterprise/domain/repositories/enterprise.repository';
+import { EnterprisePrismaRepository } from '../enterprise/infrastructure/prisma/enterprise.prisma.repository';
 
 @Module({
-  imports: [DocumentModule, CalendarModule],
+  imports: [DocumentModule, CalendarModule, EnterpriseModule],
   controllers: [MetricsController],
   providers: [
     DashboardHomeUseCase,
     CalendarDatesAdapter,
+    {
+      provide: ENTERPRISE_REPOSITORY,
+      useClass: EnterprisePrismaRepository,
+    },
     {
       provide: CALENDAR_METRICS,
       useClass: GoogleCalendarMetricsAdapter,
