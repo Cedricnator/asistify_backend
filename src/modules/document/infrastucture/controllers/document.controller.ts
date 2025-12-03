@@ -162,9 +162,15 @@ export class DocumentController {
   })
   @Get()
   @HttpCode(200)
-  async findAll(
-    @EnterpriseId() enterpriseId: string,
-  ): Promise<DocumentEntity[]> {
+  async findAll(@EnterpriseId() enterpriseId: string): Promise<{
+    data: DocumentEntity[];
+    metadata: {
+      limit: number;
+      actualPage: number;
+      nextPage: number | null;
+      totalPages: number;
+    };
+  }> {
     return await this.findDocumentsUseCase.execute({
       enterpriseId: enterpriseId,
     });
