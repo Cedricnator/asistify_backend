@@ -9,11 +9,20 @@ echo "🚀 Starting deployment script (Docker Run mode)..."
 echo "🔑 Logging into GitHub Container Registry..."
 echo "$GITHUB_TOKEN" | docker login ghcr.io -u "$GITHUB_USERNAME" --password-stdin
 
-# 2. Pull latest image
+# 2. Stop and remove old container
+echo "🛑 Stopping old container..."
+docker stop backend || true
+docker rm backend || true
+
+# 3. Remove old image to ensure clean pull
+echo "🗑️ Removing old image..."
+docker rmi "$IMAGE_TAG" || true
+
+# 4. Pull latest image
 echo "⬇️ Pulling latest image: $IMAGE_TAG"
 docker pull "$IMAGE_TAG"
 
-# 3. Create .env file with secrets
+# 5. Create .env file with secrets
 echo "📝 Creating .env file..."
 cat <<EOF > .env
 # NODE APP
@@ -54,7 +63,7 @@ FLOW_SECRET=$FLOW_SECRET
 SSH_HOST=$SSH_HOST
 EOF
 
-# 4. Create gs2.json file
+# 6. Create gs2.json file
 # We construct this file using the environment variables to avoid hardcoding secrets in the script
 echo "📝 Creating gs2.json file..."
 cat <<EOF > gs2.json
@@ -73,16 +82,11 @@ cat <<EOF > gs2.json
 }
 EOF
 
-# 5. Stop and remove old container
-echo "🛑 Stopping old container..."
-docker stop backend || true
-docker rm backend || true
-
-# 6. Ensure network exists
+# 7. Ensure network exists
 echo "🌐 Ensuring network exists..."
 docker network create asistify_network || true
 
-# 7. Run new container
+# 8. Run new container
 echo "▶️ Starting new container..."
 # We mount the generated gs2.json into the container
 docker run -d \
@@ -94,7 +98,7 @@ docker run -d \
   -p 36000:3000 \
   "$IMAGE_TAG"
 
-# 8. Clean up unused images
+# 9. Clean up unused images
 echo "🧹 Cleaning up..."
 docker image prune -f
 
