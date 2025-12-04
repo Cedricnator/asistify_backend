@@ -8,6 +8,7 @@ import {
   Res,
   Query,
   HttpStatus,
+  Version,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { TwilioService } from './twilio.service';
@@ -43,6 +44,7 @@ export class TwilioWebhookController {
    * @param identity - Unique identifier for the user/session
    * @returns JWT access token
    */
+  @Version('1')
   @Get('token')
   getVoiceAccessToken(@Query('identity') identity: string) {
     if (!identity) {
