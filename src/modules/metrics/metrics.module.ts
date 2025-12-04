@@ -14,12 +14,20 @@ import { CALENDAR_DATES_PORT } from './domain/ports/out/calendar-dates.port';
 import { EnterpriseModule } from '../enterprise/enterprise.module';
 import { ENTERPRISE_REPOSITORY } from '../enterprise/domain/repositories/enterprise.repository';
 import { EnterprisePrismaRepository } from '../enterprise/infrastructure/prisma/enterprise.prisma.repository';
+import { CountReceptionistUseCase } from '../receptionist/application/use-cases/recepcionist/count-receptionist.use-case';
+import { ReceptionistModule } from '../receptionist/receptionist.module';
 
 @Module({
-  imports: [DocumentModule, CalendarModule, EnterpriseModule],
+  imports: [
+    DocumentModule,
+    CalendarModule,
+    EnterpriseModule,
+    ReceptionistModule,
+  ],
   controllers: [MetricsController],
   providers: [
     DashboardHomeUseCase,
+    CountReceptionistUseCase,
     CalendarDatesAdapter,
     {
       provide: ENTERPRISE_REPOSITORY,
