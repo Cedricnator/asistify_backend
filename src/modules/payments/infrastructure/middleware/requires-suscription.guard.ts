@@ -1,4 +1,4 @@
-import { CanActivate, ExecutionContext, Inject, Injectable, NestMiddleware } from "@nestjs/common";
+import { CanActivate, ExecutionContext, ForbiddenException, Inject, Injectable, NestMiddleware } from "@nestjs/common";
 import { SUSCRIPTION_REPOSITORY, type SuscriptionRepository } from "../../domain/repositories/suscription.repository";
 
 @Injectable()
@@ -19,6 +19,8 @@ export class RequiresSuscriptionGuard implements CanActivate {
       let isSuscriptionPaid=suscription!.paid
       return isSuscriptionActive&&isSuscriptionPaid
     }
+
+    throw new ForbiddenException("pay subscription please")
     return false
   }
 }
