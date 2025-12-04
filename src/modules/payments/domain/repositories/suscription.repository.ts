@@ -16,6 +16,7 @@ export interface SuscriptionRepository {
   ): Promise<SuscriptionEntity>;
   listSuscriptions(planId: string):Promise<SuscriptionEntity[]>;
   getSuscription(subscriptionId: string): Promise<SuscriptionEntity>;
+  getByEnterpriseId(enterpriseId: string): Promise<SuscriptionEntity|null>
   
 
   cancelSuscription(subscriptionId: string): Promise<string>;

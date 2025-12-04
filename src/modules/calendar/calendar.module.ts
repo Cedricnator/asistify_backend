@@ -11,9 +11,12 @@ import { GoogleCalendarRepository } from './google/google-calendar.repository';
 import { CALENDAR_REPOSITORY } from './domain/repositories/calendar.repository';
 import { ListCalendarsUseCase } from './application/use-cases/list-calendars.use-case';
 import { GOAuthController } from './controllers/oauth.controller';
+import { PaymentsModule } from '../payments/payments.module';
+import { SUSCRIPTION_REPOSITORY } from '../payments/domain/repositories/suscription.repository';
+import { SuscriptionRepositoryAdapter } from '../payments/infrastructure/prisma/suscription.repository.adapter';
 
 @Module({
-  imports: [SupabaseModule],
+  imports: [SupabaseModule, PaymentsModule],
   controllers: [CalendarController, GOAuthController],
   providers: [
     CreateCalendarUseCase,
@@ -28,6 +31,10 @@ import { GOAuthController } from './controllers/oauth.controller';
       provide: CALENDAR_REPOSITORY,
       useClass: GoogleCalendarRepository,
     },
+    {
+      provide:SUSCRIPTION_REPOSITORY,
+      useClass:SuscriptionRepositoryAdapter
+    }
   ],
   exports: [ListDatesUseCase, CALENDAR_REPOSITORY],
 })

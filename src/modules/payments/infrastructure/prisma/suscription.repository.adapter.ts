@@ -138,6 +138,18 @@ export class SuscriptionRepositoryAdapter implements SuscriptionRepository {
         data.morose == 0)
     return suscription;
   }
+
+  async getByEnterpriseId(enterpriseId: string): Promise<SuscriptionEntity|null>{
+    let foundSuscription=await this.prisma.subscription.findFirst({where:{enterprise_id:enterpriseId}})
+    
+    if (foundSuscription==null){
+      return foundSuscription;
+    }
+
+    let flowInfo=await this.getSuscription(foundSuscription.flow_id);
+    
+    return flowInfo;
+  }
   
 
 
