@@ -3,6 +3,7 @@ import { TwilioWebhookController } from './twilio.controller';
 import { TwilioService } from './twilio.service';
 import { TwilioMediaStreamGateway } from './twilio-media-stream.gateway';
 import { ReceptionistModule } from '../receptionist/receptionist.module';
+import { MetricsModule } from '../metrics/metrics.module';
 
 /**
  * Twilio Module
@@ -13,7 +14,7 @@ import { ReceptionistModule } from '../receptionist/receptionist.module';
  * - Call management and routing
  */
 @Module({
-  imports: [ReceptionistModule],
+  imports: [ReceptionistModule, MetricsModule],
   controllers: [TwilioWebhookController],
   providers: [TwilioService, TwilioMediaStreamGateway],
   exports: [TwilioService],
