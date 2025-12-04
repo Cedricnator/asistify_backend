@@ -2,8 +2,10 @@ import { Module } from '@nestjs/common';
 import { CALENDAR_METRICS } from './domain/ports/out/calendar-metric.port';
 import { DashboardHomeUseCase } from './application/use-cases/find-dashboard-home.use-case';
 import { MetricsController } from './infrastructure/controllers/metrics.controller';
+
 import { CALL_HISTORY } from './domain/ports/out/call-history.port';
-import { LocalCallHistoryAdapter } from './infrastructure/adapters/local.call-history.adapter';
+import { PrismaCallHistoryAdapter } from './infrastructure/adapters/prisma.call-history.adapter';
+import { SaveCallHistoryUseCase } from './application/use-cases/save-call-history.use-case';
 import { OVERVIEW_DATA_PORT } from './domain/ports/out/overview-data.port';
 import { LocalOverviewDataAdapter } from './infrastructure/adapters/local.overview-data.adapter';
 import { DocumentModule } from '../document/document.module';
@@ -43,13 +45,14 @@ import { ReceptionistModule } from '../receptionist/receptionist.module';
     },
     {
       provide: CALL_HISTORY,
-      useClass: LocalCallHistoryAdapter,
+      useClass: PrismaCallHistoryAdapter,
     },
+    SaveCallHistoryUseCase,
     {
       provide: 'OVERVIEW_DATA_PORT',
       useClass: LocalOverviewDataAdapter,
     },
   ],
-  exports: [],
+  exports: [SaveCallHistoryUseCase],
 })
 export class MetricsModule {}
