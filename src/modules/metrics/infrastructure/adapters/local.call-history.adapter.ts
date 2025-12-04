@@ -7,6 +7,13 @@ export class LocalCallHistoryAdapter implements CallHistoryPort {
       new CallHistory(new Date(), 'Client A', 3, 'receptionist1', 'completed'),
       new CallHistory(new Date(), 'Client B', 0, 'receptionist2', 'missed'),
       new CallHistory(new Date(), 'Client C', 5, 'receptionist3', 'completed'),
+      new CallHistory(
+        new Date(1764719115),
+        'Client A',
+        4,
+        'receptionist3',
+        'completed',
+      ),
     ];
     return history;
   }

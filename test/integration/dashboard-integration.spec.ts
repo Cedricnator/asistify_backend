@@ -1,5 +1,9 @@
 // typescript
-import { INestApplication } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  INestApplication,
+} from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AppModule } from '../../src/app.module';
 import request from 'supertest';
@@ -8,6 +12,8 @@ import type {
   Calendar,
   CalendarRepositoryPort,
 } from '../types/calendar';
+import { CountReceptionistUseCase } from '../../src/modules/receptionist/application/use-cases/recepcionist/count-receptionist.use-case';
+import { SupabaseAuthGuard } from '../../src/modules/auth/infrastructure/guards/supabase-auth.guard';
 
 describe('DashboardIntegration', () => {
   let app: INestApplication;
@@ -50,6 +56,9 @@ describe('DashboardIntegration', () => {
     save: jest.fn().mockResolvedValue(undefined),
     remove: jest.fn().mockResolvedValue(undefined),
   };
+  const mockCountReceptionistUseCase = {
+    execute: jest.fn().mockResolvedValue(5),
+  };
 
   // stub for Google strategy adapter — return a simple validated user payload
   const mockGoogleStrategy: AuthStrategy & Record<string, any> = {
@@ -58,11 +67,30 @@ describe('DashboardIntegration', () => {
       .mockResolvedValue({ id: 'test-user', email: 'test@example.com' }),
     authenticate: jest.fn(),
   };
+  const mockEnterpriseIdDecorator = jest.fn().mockReturnValue('enterprise-123');
+  const mockAuthGuard: CanActivate = {
+    canActivate: (context: ExecutionContext) => {
+      const req = context.switchToHttp().getRequest();
 
+      // AQUÍ ESTÁ EL TRUCO: Simulamos lo que Supabase haría
+      req.user = {
+        app_metadata: {
+          enterprise_id: 'empresa-123-test', // El ID que tu decorador leerá
+        },
+        email: 'test@example.com',
+      };
+
+      return true; // Permitir acceso
+    },
+  };
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
+      .overrideGuard(SupabaseAuthGuard)
+      .useValue(mockAuthGuard)
+      .overrideProvider(CountReceptionistUseCase)
+      .useValue(mockCountReceptionistUseCase) // provide empty mock for other dependencies if needed
       // override repository adapter with the mock — try several likely provider tokens
       .overrideProvider('CalendarRepositoryAdapter')
       .useValue(mockCalendarRepo)
@@ -129,6 +157,13 @@ describe('DashboardIntegration', () => {
 
       expect(response.body).toHaveProperty('overview');
       expect(response.body).toHaveProperty('callHistory');
+    });
+    it('should return 5 receptionis count', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/dashboard')
+        .set('Authorization', 'Bearer dev-token-123');
+
+      expect(response.status).toBe(200);
     });
   });
 });
