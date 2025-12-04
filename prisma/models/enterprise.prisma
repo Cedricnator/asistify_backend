@@ -21,6 +21,7 @@ model Enterprise {
   subscription        Subscription?
   receptionists       Receptionist[]
   enterprise_profiles EnterpriseProfile[]
-
+  calendar_id         String?
+  
   @@map("enterprise")
 }

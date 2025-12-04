@@ -11,6 +11,11 @@ export class UpdateEnterpriseDto {
   categoryId?: string;
 
   @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  calendarId?: string;
+
+  @IsOptional()
   @IsUUID()
   subscriptionId?: string;
 }

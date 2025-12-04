@@ -1,5 +1,6 @@
 import { Controller, Get, Version } from '@nestjs/common';
 import { DashboardHomeUseCase } from '../../application/use-cases/find-dashboard-home.use-case';
+import { EnterpriseId } from '../../../auth/infrastructure/decorators/enterprise-id.decorator';
 
 @Controller('dashboard')
 export class MetricsController {
@@ -7,9 +8,7 @@ export class MetricsController {
 
   @Get()
   @Version('1')
-  async getMetrics() {
-    //TODO: replace "idEnterprise" with real idEnterprise from token
-
-    return await this.dashboardHomeUseCase.execute('idEnterprise');
+  async getMetrics(@EnterpriseId() enterpriseId: string) {
+    return await this.dashboardHomeUseCase.execute(enterpriseId);
   }
 }

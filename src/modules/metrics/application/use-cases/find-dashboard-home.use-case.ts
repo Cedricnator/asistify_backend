@@ -24,8 +24,6 @@ export class DashboardHomeUseCase {
     private readonly overviewDataPort: OverviewDataPort,
   ) {}
   async execute(idEnterprise: string): Promise<DashboardHomeEntity> {
-    console.log(this.calendarMetricsPort.getMetrics(idEnterprise));
-
     const dashboardData: DashboardHomeEntity = new DashboardHomeEntity(
       await this.overviewDataPort.getOverviewData(idEnterprise),
       await this.calendarMetricsPort.getMetrics(idEnterprise),

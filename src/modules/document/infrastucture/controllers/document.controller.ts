@@ -12,6 +12,7 @@ import {
   BadRequestException,
   Logger,
   Version,
+  Res,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { CreateDocumentUseCase } from '../../application/use-cases/document/create-document.use-case';
@@ -31,7 +32,6 @@ import { MinioService } from '../../../minio/minio.service';
 import { TextExtractionService } from '../../application/services/text-extraction.service';
 import { IngestionService } from '../../../chunks/application/services/ingestion.service';
 import { EnterpriseId } from 'src/modules/auth/infrastructure/decorators/enterprise-id.decorator';
-import { strict } from 'node:assert';
 
 @ApiTags('Documents')
 @Controller('documents')
@@ -80,7 +80,7 @@ export class DocumentController {
     @UploadedFile() file: Express.Multer.File,
     @Body()
     body: {
-      documentTypeId: string;
+      documentTypeId?: string;
     },
   ): Promise<DocumentEntity> {
     if (!file) {
@@ -108,7 +108,8 @@ export class DocumentController {
       extensionContent: file.mimetype,
       size: file.size,
       filePath: uploadedFile.fileName,
-      documentTypeId: body.documentTypeId,
+      documentTypeId:
+        body.documentTypeId ?? '4fc9ff43-cfb7-4b3f-a1b2-01eeab4c7a29',
       enterpriseId: enterpriseId,
     };
 
@@ -197,9 +198,32 @@ export class DocumentController {
     status: 204,
     description: 'The document has been successfully deleted.',
   })
-  @HttpCode(204)
   @Delete(':id')
+  @HttpCode(204)
   async delete(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
     return await this.deleteDocumentUseCase.execute(id);
+  }
+
+  @Version('1')
+  @ApiOperation({ summary: 'Download a document by ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'The document file.',
+  })
+  @Get(':id/download')
+  async download(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Res() res,
+  ): Promise<void> {
+    const document = await this.findDocumentUseCase.execute(id);
+    if (!document) {
+      throw new BadRequestException('Document not found');
+    }
+    const fileBuffer = await this.minioService.downloadFile(document.filePath);
+    res.set({
+      'Content-Type': document.extensionContent,
+      'Content-Disposition': `attachment; filename="${document.originalName}"`,
+    });
+    res.send(fileBuffer);
   }
 }
