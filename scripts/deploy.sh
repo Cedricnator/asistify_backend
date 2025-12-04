@@ -3,7 +3,7 @@
 # Exit immediately if a command exits with a non-zero status
 set -e
 
-echo "🚀 Starting deployment script..."
+echo "🚀 Starting deployment script (Docker Run mode)..."
 
 # 1. Login to GHCR
 echo "🔑 Logging into GitHub Container Registry..."
@@ -41,35 +41,58 @@ GCLIENT_SECRET=$GCLIENT_SECRET
 MINIO_ACCESS_KEY=$MINIO_ACCESS_KEY
 MINIO_SECRET_KEY=$MINIO_SECRET_KEY
 MINIO_BUCKET_NAME=$MINIO_BUCKET_NAME
-MINIO_ENDPOINT=$MINIO_ENDPOINT
-MINIO_PORT=$MINIO_PORT
+MINIO_ENDPOINT=minio
+MINIO_PORT=9000
 MINIO_USE_SSL=false
 # FLOW
 FLOW_RETURN_URL=$FLOW_RETURN_URL
 FLOW_API_KEY=$FLOW_API_KEY
 FLOW_SECRET=$FLOW_SECRET
+# SSH 
+SSH_HOST=$SSH_HOST
 EOF
 
-# 4. Stop and remove old container
+# 4. Create gs2.json file
+# We construct this file using the environment variables to avoid hardcoding secrets in the script
+echo "📝 Creating gs2.json file..."
+cat <<EOF > gs2.json
+{
+  "installed": {
+    "client_id": "$GCLIENT_ID",
+    "project_id": "calendar-manager-477419",
+    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+    "token_uri": "https://oauth2.googleapis.com/token",
+    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+    "client_secret": "$GCLIENT_SECRET",
+    "redirect_uris": [
+      "http://$SSH_HOST/payments/flowCallback"
+    ]
+  }
+}
+EOF
+
+# 5. Stop and remove old container
 echo "🛑 Stopping old container..."
 docker stop backend || true
 docker rm backend || true
 
-# 5. Ensure network exists
+# 6. Ensure network exists
 echo "🌐 Ensuring network exists..."
 docker network create asistify_network || true
 
-# 6. Run new container
+# 7. Run new container
 echo "▶️ Starting new container..."
+# We mount the generated gs2.json into the container
 docker run -d \
   --name backend \
   --restart unless-stopped \
   --network asistify_network \
   --env-file .env \
+  -v "$(pwd)/gs2.json:/usr/src/app/gs2.json" \
   -p 36000:3000 \
   "$IMAGE_TAG"
 
-# 7. Clean up unused images
+# 8. Clean up unused images
 echo "🧹 Cleaning up..."
 docker image prune -f
 
