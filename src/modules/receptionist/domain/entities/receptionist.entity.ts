@@ -1,3 +1,5 @@
+import { AvatarEntity } from './avatar.entity';
+
 export class ReceptionistEntity {
   constructor(
     public readonly id: string,
@@ -11,6 +13,7 @@ export class ReceptionistEntity {
     public readonly updatedAt: Date,
     public readonly enterpriseId: string,
     public readonly avatarId: string,
+    public readonly avatar?: AvatarEntity | null,
     public readonly enterpriseInformation?: string | null,
     public readonly clientInformation?: string | null,
     public readonly businessRestrictions?: string | null,
@@ -29,6 +32,7 @@ interface ReceptionistBuilder {
   withUpdatedAt(updatedAt: Date): ReceptionistBuilder;
   withEnterpriseId(enterpriseId: string): ReceptionistBuilder;
   withAvatarId(avatarId: string): ReceptionistBuilder;
+  withAvatar(avatar: AvatarEntity | null): ReceptionistBuilder;
   withEnterpriseInformation(
     enterpriseInformation: string | null,
   ): ReceptionistBuilder;
@@ -51,6 +55,7 @@ export class ConcreteReceptionistBuilder implements ReceptionistBuilder {
   private updatedAt?: Date;
   private enterpriseId?: string;
   private avatarId?: string;
+  private avatar?: AvatarEntity | null;
   private enterpriseInformation?: string | null;
   private clientInformation?: string | null;
   private businessRestrictions?: string | null;
@@ -110,6 +115,11 @@ export class ConcreteReceptionistBuilder implements ReceptionistBuilder {
     return this;
   }
 
+  withAvatar(avatar: AvatarEntity | null): ReceptionistBuilder {
+    this.avatar = avatar;
+    return this;
+  }
+
   withEnterpriseInformation(
     enterpriseInformation?: string | null,
   ): ReceptionistBuilder {
@@ -160,6 +170,7 @@ export class ConcreteReceptionistBuilder implements ReceptionistBuilder {
       this.updatedAt,
       this.enterpriseId,
       this.avatarId,
+      this.avatar,
       this.enterpriseInformation,
       this.clientInformation,
       this.businessRestrictions,

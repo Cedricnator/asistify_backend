@@ -27,6 +27,7 @@ export class CreateReceptionistDto {
   readonly levelDynamism: number;
 
   @IsUUID()
+  @IsOptional()
   readonly enterpriseId: string;
 
   @IsOptional()
