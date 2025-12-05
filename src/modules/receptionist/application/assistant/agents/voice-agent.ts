@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { GoogleGenAI, Modality, Type } from '@google/genai';
 import { ReceptionistPersonality } from '../types/receptionist-personality';
 import { CreateDateUseCase } from '../../../../calendar/application/use-cases/create-date.use-case';
+import { RetrivalService } from '../../../../chunks/application/services/retrival.service';
 
 /**
  * VoiceAgent - Gemini Live API integration for real-time voice interactions
@@ -49,6 +50,7 @@ export class VoiceAgent implements OnModuleInit {
   constructor(
     private readonly configService: ConfigService,
     private readonly createDateUseCase: CreateDateUseCase,
+    private readonly retrivalService: RetrivalService,
   ) {
     // Load configuration on construction
     this.modelName =
@@ -191,6 +193,22 @@ export class VoiceAgent implements OnModuleInit {
                       },
                     },
                     required: ['clientName', 'datetime', 'duration'],
+                  },
+                },
+                {
+                  name: 'searchKnowledge',
+                  description:
+                    'Search the company knowledge base (RAG) for specific information about the business, products, services, policies, or procedures. Use this when the user asks detailed questions about the company that are not covered in your general instructions.',
+                  parameters: {
+                    type: Type.OBJECT,
+                    properties: {
+                      query: {
+                        type: Type.STRING,
+                        description:
+                          'The search query to find relevant information in the knowledge base. Be specific and clear.',
+                      },
+                    },
+                    required: ['query'],
                   },
                 },
               ],
@@ -361,6 +379,75 @@ export class VoiceAgent implements OnModuleInit {
                         response: {
                           result: 'error',
                           message: `Failed to book appointment: ${error.message}`,
+                        },
+                        id: call.id,
+                      });
+                    }
+                  } else if (call.name === 'searchKnowledge') {
+                    this.logger.log('Executing tool: searchKnowledge');
+                    this.logger.log(`Args: ${JSON.stringify(call.args)}`);
+
+                    try {
+                      const args = call.args as any;
+                      const query = args.query;
+
+                      if (!query || query.trim() === '') {
+                        throw new Error('Query cannot be empty');
+                      }
+
+                      // Get enterprise ID from receptionist (assuming it's available)
+                      // If documents are filtered by enterprise, you may need to pass enterpriseId
+                      const retrievalResult =
+                        await this.retrivalService.retrieve({
+                          query,
+                          matchThreshold: 0.7,
+                          matchCount: 5,
+                          useQueryRewrite: false,
+                        });
+
+                      if (retrievalResult.chunks.length === 0) {
+                        // No information found in RAG
+                        toolResponses.push({
+                          name: call.name,
+                          response: {
+                            result: 'not_found',
+                            message:
+                              'No tengo esa información en mi base de conocimiento.',
+                          },
+                          id: call.id,
+                        });
+                      } else {
+                        // Build context from chunks
+                        const context = retrievalResult.chunks
+                          .map((chunk) => chunk.content)
+                          .join('\n\n');
+
+                        this.logger.log(
+                          `Found ${retrievalResult.chunks.length} relevant chunks for query: "${query}"`,
+                        );
+
+                        toolResponses.push({
+                          name: call.name,
+                          response: {
+                            result: 'success',
+                            information: context,
+                            totalResults: retrievalResult.totalResults,
+                          },
+                          id: call.id,
+                        });
+                      }
+                    } catch (error) {
+                      this.logger.error(
+                        `Error searching knowledge base: ${error.message}`,
+                        error.stack,
+                      );
+                      // Return "I don't know" response on error
+                      toolResponses.push({
+                        name: call.name,
+                        response: {
+                          result: 'error',
+                          message:
+                            'No tengo esa información en mi base de conocimiento.',
                         },
                         id: call.id,
                       });
@@ -725,11 +812,19 @@ ${styleGuide}
 **Tu Rol:**
 Gestionar citas y consultas. Tu objetivo principal es agendar citas correctamente usando la herramienta \`bookAppointment\`.
 
+**HERRAMIENTAS DISPONIBLES:**
+1. **bookAppointment**: Agendar citas para clientes.
+2. **searchKnowledge**: Buscar información específica sobre la empresa en la base de conocimientos.
+   - Úsala cuando el usuario pregunte por: productos, servicios, políticas, procedimientos, precios, horarios, ubicaciones, etc.
+   - Si la herramienta devuelve "not_found" o "error", responde: "Disculpe, no tengo esa información disponible en este momento."
+   - NUNCA inventes información que no esté en la base de conocimientos o en tus instrucciones generales.
+
 **Fecha Actual:** ${date}
 **Año Actual:** ${currentYear}
 
 **REGLAS DE RAZONAMIENTO:**
 Antes de responder o llamar a una herramienta, PIENSA PASO A PASO en silencio:
+NUNCA debes pensar en voz alta ni compartir tu razonamiento con el usuario. Solo piensa internamente.
 1. **Analizar Intención:** ¿El usuario quiere agendar, cancelar o solo preguntar?
 2. **Verificar Datos:** Si quiere agendar, ¿tengo Nombre, Fecha/Hora y Duración?
 3. **Validar Fecha:**
@@ -772,10 +867,19 @@ Usuario: "Soy Ana, el martes a las 10am, una hora."
 Asistente (Pensamiento): "Tengo todo. Ana, Martes próximo 10am, 60 min. Validando fecha... Correcto."
 Asistente: (Llama a tool bookAppointment) "Perfecto Ana, queda agendado para el martes a las 10."
 
+**Ejemplo 6: Consulta sobre la Empresa**
+Usuario: "¿Cuál es el horario de atención?"
+Asistente (Pensamiento): "El usuario pregunta por información específica de la empresa. Debo usar searchKnowledge."
+Asistente: (Llama a tool searchKnowledge con query: "horario de atención") 
+[Si encuentra]: "Nuestro horario es de lunes a viernes de 9am a 6pm."
+[Si no encuentra]: "Disculpe, no tengo esa información disponible en este momento."
+
 **Instrucciones Finales:**
 - NO inventes fechas.
 - Si el usuario no especifica duración, asume 30 minutos pero confírmalo.
 - Sé amable pero eficiente.
+- Usa searchKnowledge para consultas específicas sobre la empresa.
+- Si searchKnowledge no encuentra resultados, NUNCA inventes información.
 `;
 
     if (personality.enterpriseInformation) {

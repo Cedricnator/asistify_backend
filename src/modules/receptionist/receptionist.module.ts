@@ -26,11 +26,12 @@ import { CountReceptionistUseCase } from './application/use-cases/recepcionist/c
 import { CalendarModule } from '../calendar/calendar.module';
 import { EnterpriseModule } from '../enterprise/enterprise.module';
 import { PaymentsModule } from '../payments/payments.module';
+import { ChunkModule } from '../chunks/chunk.module';
 import { SUSCRIPTION_REPOSITORY } from '../payments/domain/repositories/suscription.repository';
 import { SuscriptionRepositoryAdapter } from '../payments/infrastructure/prisma/suscription.repository.adapter';
 
 @Module({
-  imports: [CalendarModule, EnterpriseModule, PaymentsModule],
+  imports: [CalendarModule, EnterpriseModule, PaymentsModule, ChunkModule],
   providers: [
     VoiceAgent,
     AssistantManager,
@@ -65,9 +66,9 @@ import { SuscriptionRepositoryAdapter } from '../payments/infrastructure/prisma/
       useClass: ReceptionistPrismaRepository,
     },
     {
-      provide:SUSCRIPTION_REPOSITORY,
-      useClass:SuscriptionRepositoryAdapter
-    }
+      provide: SUSCRIPTION_REPOSITORY,
+      useClass: SuscriptionRepositoryAdapter,
+    },
   ],
   controllers: [ReceptionistController, AvatarController, MetricController],
   exports: [

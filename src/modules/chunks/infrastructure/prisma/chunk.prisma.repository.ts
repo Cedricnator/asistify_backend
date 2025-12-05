@@ -3,7 +3,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/modules/prisma/prisma.service';
 import {
   ChunkRepository,
@@ -16,6 +16,7 @@ import { SUPABASE_CLIENT } from 'src/modules/supabase/supabase.module';
 
 @Injectable()
 export class ChunkPrismaRepository implements ChunkRepository {
+  private readonly logger = new Logger(ChunkPrismaRepository.name);
   constructor(
     @Inject(SUPABASE_CLIENT)
     private readonly supabaseClient: SupabaseClient,
@@ -150,45 +151,54 @@ export class ChunkPrismaRepository implements ChunkRepository {
   }
 
   async search(params: SearchChunksParams): Promise<ChunkEntity[]> {
-    const {
-      queryEmbedding,
-      matchThreshold = 0.7,
-      matchCount = 10,
-      documentId,
-    } = params;
+    try {
+        this.logger.log(`[Searching] chunks with params: ${JSON.stringify(params)}`); 
+      const {
+        queryEmbedding,
+        matchThreshold = 0.7,
+        matchCount = 10,
+        documentId,
+      } = params;
 
-    const { data, error } = await this.supabaseClient.rpc(
-      'match_document_chunks',
-      {
-        query_embedding: queryEmbedding,
-        match_threshold: matchThreshold,
-        match_count: matchCount,
-        filter_document_id: documentId || null,
-      },
-    );
+      const { data, error } = await this.supabaseClient.rpc(
+        'match_document_chunks',
+        {
+          query_embedding: queryEmbedding,
+          match_threshold: matchThreshold,
+          match_count: matchCount,
+          filter_document_id: documentId || null,
+        },
+      );
 
-    if (error) {
-      throw new Error(`Error searching chunks: ${error.message}`);
+      if (error) {
+        this.logger.error(`[Error] searching chunks: ${JSON.stringify(error)}`);
+        throw new Error(`Error searching chunks: ${error.message}`);
+      }
+
+      if (!data || data.length === 0) {
+        this.logger.warn('[Warning] No chunks found matching the criteria');
+        return [];
+      }
+
+      return data.map(
+        (row: any) =>
+          new ChunkEntity(
+            row.id,
+            row.index,
+            row.content,
+            row.document_id,
+            this.parseEmbedding(row.embedding),
+            row.keywords,
+            row.metadata,
+            row.document_chunk_type_id,
+            new Date(row.created_at),
+          ),
+      );
+    } catch (error) {
+        this.logger.error(`[Error] searching chunks: ${error.message}`);    
+        throw error;
     }
-
-    if (!data || data.length === 0) {
-      return [];
-    }
-
-    return data.map(
-      (row: any) =>
-        new ChunkEntity(
-          row.id,
-          row.index,
-          row.content,
-          row.document_id,
-          this.parseEmbedding(row.embedding),
-          row.keywords,
-          row.metadata,
-          row.document_chunk_type_id,
-          new Date(row.created_at),
-        ),
-    );
+   
   }
 
   async delete(id: string): Promise<void> {
