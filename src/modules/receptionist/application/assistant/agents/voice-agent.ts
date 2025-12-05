@@ -32,10 +32,7 @@ export class VoiceAgent implements OnModuleInit {
   private receptionistId: string;
   private calendarId?: string;
   private receptionistName: string;
-  private personality: {
-    formality: number;
-    dynamism: number;
-  };
+  private personality: ReceptionistPersonality;
   private readonly modelName: string;
   private readonly config: {
     temperature: number;
@@ -104,7 +101,9 @@ export class VoiceAgent implements OnModuleInit {
     receptionistId: string,
     calendarId?: string,
   ): Promise<VoiceAgent> {
-    this.logger.warn(`Initializing Live API session for: PERSONALITY: ${personality.name}, Receptionist ID: ${receptionistId}, Calendar ID: ${calendarId}`);
+    this.logger.warn(
+      `Initializing Live API session for: PERSONALITY: ${personality.name}, Receptionist ID: ${receptionistId}, Calendar ID: ${calendarId}`,
+    );
 
     if (!this.genAI) {
       throw new Error(
@@ -116,10 +115,7 @@ export class VoiceAgent implements OnModuleInit {
     this.receptionistId = receptionistId;
     this.calendarId = calendarId;
     this.receptionistName = personality.name;
-    this.personality = {
-      formality: personality.levelFormality,
-      dynamism: personality.levelDynamism,
-    };
+    this.personality = personality;
 
     this.logger.log(
       `Session initialized for ${personality.name} - Formality: ${personality.levelFormality}/10, Dynamism: ${personality.levelDynamism}/10`,
@@ -133,9 +129,7 @@ export class VoiceAgent implements OnModuleInit {
    * Connect to Gemini Live API via WebSocket
    * Call this after initializeSession() to start the streaming session
    */
-  async connect(personality: ReceptionistPersonality): Promise<void> {
-    
-
+  async connect(): Promise<void> {
     if (!this.genAI) {
       throw new Error(
         'Voice agent not initialized. Check your Gemini API key.',
@@ -149,7 +143,9 @@ export class VoiceAgent implements OnModuleInit {
 
     try {
       // Build system instruction based on personality
-      const systemInstruction = this.buildSystemInstruction(personality);
+      const systemInstruction = this.buildSystemInstruction(this.personality);
+
+      this.logger.log(`System instruction built: ${systemInstruction}`);
 
       // Create Live API session with audio response modality
       this.liveSession = await this.genAI.live.connect({
@@ -164,7 +160,8 @@ export class VoiceAgent implements OnModuleInit {
           speechConfig: {
             voiceConfig: {
               prebuiltVoiceConfig: {
-                voiceName: 'Aoede', // Professional female voice
+                // Opciones: 'Puck', 'Charon', 'Kore', 'Fenrir', 'Aoede'
+                voiceName: 'Aoede', // Optimistic voice - works better for Spanish
               },
             },
           },
@@ -180,12 +177,13 @@ export class VoiceAgent implements OnModuleInit {
                     properties: {
                       clientName: {
                         type: Type.STRING,
-                        description: 'Name of the client booking the appointment',
+                        description:
+                          'Name of the client booking the appointment',
                       },
                       datetime: {
                         type: Type.STRING,
                         description:
-                          'Date and time of the appointment in ISO 8601 format (e.g., 2023-10-27T10:00:00)',
+                          'Date and time of the appointment in ISO 8601 format (e.g., 2025-10-27T10:00:00)',
                       },
                       duration: {
                         type: Type.NUMBER,
@@ -213,7 +211,20 @@ export class VoiceAgent implements OnModuleInit {
 
             // Handle setup complete
             if (response.setupComplete) {
-              this.logger.log('Live API setup complete');
+              this.logger.log(
+                'Live API setup complete - Sending Spanish priming message',
+              );
+              // CRITICAL: Send immediate Spanish message to force Spanish accent/language
+              // This is a workaround for Gemini Live API language detection issues
+              this.liveSession.sendClientContent({
+                turns: [
+                  {
+                    role: 'user',
+                    parts: [{ text: '¡Hola! Habla en español por favor.' }],
+                  },
+                ],
+                turnComplete: true,
+              });
               return;
             }
 
@@ -254,7 +265,6 @@ export class VoiceAgent implements OnModuleInit {
               try {
                 this.generationCompleteCallbacks.forEach(async (cb) => {
                   try {
-                    await new Promise((resolve) => setTimeout(resolve, 4000));
                     cb();
                   } catch (e) {
                     this.logger.error(
@@ -298,9 +308,7 @@ export class VoiceAgent implements OnModuleInit {
                 for (const call of functionCalls) {
                   if (call.name === 'bookAppointment') {
                     this.logger.log('Executing tool: bookAppointment');
-                    this.logger.log(
-                      `Args: ${JSON.stringify(call.args)}`,
-                    );
+                    this.logger.log(`Args: ${JSON.stringify(call.args)}`);
 
                     this.logger.log('Calendar ID: ' + this.calendarId);
                     this.logger.log('Receptionist ID: ' + this.receptionistId);
@@ -313,7 +321,12 @@ export class VoiceAgent implements OnModuleInit {
                       }
 
                       const args = call.args as any;
-                      const start = new Date(args.datetime);
+                      // Append Z to treat as UTC, preventing server timezone shift
+                      const start = new Date(
+                        args.datetime.endsWith('Z')
+                          ? args.datetime
+                          : `${args.datetime}Z`,
+                      );
                       const duration = args.duration || 30; // default 30 mins
                       const end = new Date(start.getTime() + duration * 60000);
 
@@ -337,6 +350,7 @@ export class VoiceAgent implements OnModuleInit {
                           result: 'success',
                           message: `Appointment booked for ${args.clientName} at ${start.toLocaleString()}`,
                           eventId: event.eventId,
+                          // eventId: 'mock-event-id',
                         },
                         id: call.id,
                       });
@@ -356,20 +370,12 @@ export class VoiceAgent implements OnModuleInit {
 
                 // Send response back to the model to continue the conversation
                 if (toolResponses.length > 0) {
-                  this.liveSession.sendClientContent({
-                    turns: [
-                      {
-                        role: 'user',
-                        parts: toolResponses.map((tr) => ({
-                          functionResponse: {
-                            name: tr.name,
-                            response: tr.response,
-                            id: tr.id,
-                          },
-                        })),
-                      },
-                    ],
-                    turnComplete: true,
+                  this.liveSession.sendToolResponse({
+                    functionResponses: toolResponses.map((tr) => ({
+                      name: tr.name,
+                      response: tr.response,
+                      id: tr.id,
+                    })),
                   });
                 }
               }
@@ -461,9 +467,9 @@ export class VoiceAgent implements OnModuleInit {
         const preview = decoded
           .slice(0, Math.min(8, decoded.length))
           .toString('hex');
-        this.logger.debug(
-          `sendAudio -> mimeType=${mimeType} bytes=${decoded.length} preview=${preview}`,
-        );
+        // this.logger.debug(
+        //   `sendAudio -> mimeType=${mimeType} bytes=${decoded.length} preview=${preview}`,
+        // );
       } catch (err) {
         this.logger.debug(
           'sendAudio -> could not decode preview for logging',
@@ -636,20 +642,140 @@ export class VoiceAgent implements OnModuleInit {
       personality.levelDynamism,
     );
 
-    let instruction = `Eres ${personality.name}, debes repetir lo que te envíe en el mensaje.
-        si no puedes entender el mensaje, responde con "Lo siento, no entendí eso. ¿Podrías repetirlo por favor?".
+    // Generate specific style guidelines based on levels
+    let styleGuide = '';
+
+    // Formality Logic
+    if (personality.levelFormality <= 1) {
+      styleGuide += '- Tira bromas en cada una de tus frases\n';
+      styleGuide +=
+        '- Habla como si fueras un amigo cercano, usando jerga y modismos chilenos.\n';
+      styleGuide += '- Puedes reír.\n';
+    } else if (personality.levelFormality <= 4) {
+      styleGuide +=
+        "- Trata al usuario de 'tú'. Usa un lenguaje cercano, coloquial y amigable.\n";
+      styleGuide += '- Puedes usar expresiones informales pero respetuosas.\n';
+    } else if (personality.levelFormality <= 7) {
+      styleGuide +=
+        "- Trata al usuario de 'usted' por defecto, pero sé cercano.\n";
+      styleGuide += '- Mantén un equilibrio entre profesionalismo y calidez.\n';
+    } else {
+      styleGuide += "- Trata al usuario estrictamente de 'usted'.\n";
+      styleGuide += '- Usa un vocabulario elegante, preciso y muy cortés.\n';
+    }
+
+    // Dynamism Logic
+    if (personality.levelDynamism <= 4) {
+      styleGuide +=
+        '- Mantén un tono calmado, pausado y sereno. Transmite paz.\n';
+      styleGuide += '- Evita exclamaciones excesivas o hablar muy rápido.\n';
+    } else if (personality.levelDynamism <= 7) {
+      styleGuide +=
+        '- Muestra interés y energía positiva, pero sin exagerar.\n';
+      styleGuide += '- Tu ritmo debe ser fluido y activo.\n';
+    } else {
+      styleGuide +=
+        '- ¡Sé muy entusiasta y enérgico! Transmite mucha emoción.\n';
+      styleGuide +=
+        '- Usa un ritmo rápido y dinámico. ¡Que se note tu energía!\n';
+    }
+
+    const date = new Date().toLocaleString('es-ES', {
+      timeZone: 'America/Santiago',
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: 'numeric',
+    });
+    const currentYear = new Date().getFullYear();
+
+    this.logger.log(
+      `Building system instruction for ${personality.name} on ${date}`,
+    );
+
+    let instruction = `
+    !!! INSTRUCCIÓN CRÍTICA DE IDIOMA Y VOZ !!!
+    TU IDIOMA PRINCIPAL Y ÚNICO ES EL ESPAÑOL.
+    - Debes hablar SIEMPRE en español latinoamericano (Chile/región Andina).
+    - Usa un ACENTO NATIVO ESPAÑOL, con pronunciación clara y natural de hablante nativo chileno.
+    - NUNCA generes texto en inglés, ni siquiera frases cortas como "Hello" o "Okay". Usa "Hola" o "Entendido".
+    - Tu ENTONACIÓN debe ser la de un hispanohablante nativo, no traducción desde inglés.
+    - Ejemplos de cómo debes hablar: "¡Buenos días! ¿En qué puedo ayudarle?", "Perfecto, déjeme agendar eso para usted", "¿Me podría confirmar su nombre, por favor?"
+    
+    Eres ${personality.name}, un recepcionista profesional chileno.
+    
+    IMPORTANTE: Habla con acento español natural desde tu primera palabra. No uses acento inglés.
 
 **Personalidad:**
 - Nivel de Formalidad: ${formalityLevel} (${personality.levelFormality}/10)
 - Nivel de Dinamismo: ${dynamismLevel} (${personality.levelDynamism}/10)
 
-**IDIOMA Y ACENTO:**
-- Usa una entonación natural
-- Eres nativo del español
-- Tienes un acento hispanohablante
+**GUÍA DE ESTILO Y TONO (CRÍTICO):**
+${styleGuide}
+
+**IDIOMA, ACENTO Y ESTILO DE VOZ:**
+- Habla con ACENTO ESPAÑOL LATINOAMERICANO (Chilean Spanish). 
+- Pronunciación: Clara, natural, como un chileno nativo.
+- Entonación: Auténtica, no robótica ni traducida del inglés.
+- Ritmo: Natural y conversacional en español.
+- Sé conciso. Respuestas cortas son mejores para voz.
 
 **Tu Rol:**
-Ayudas a los clientes con consultas, citas e información general sobre el negocio.
+Gestionar citas y consultas. Tu objetivo principal es agendar citas correctamente usando la herramienta \`bookAppointment\`.
+
+**Fecha Actual:** ${date}
+**Año Actual:** ${currentYear}
+
+**REGLAS DE RAZONAMIENTO:**
+Antes de responder o llamar a una herramienta, PIENSA PASO A PASO en silencio:
+1. **Analizar Intención:** ¿El usuario quiere agendar, cancelar o solo preguntar?
+2. **Verificar Datos:** Si quiere agendar, ¿tengo Nombre, Fecha/Hora y Duración?
+3. **Validar Fecha:**
+   - ¿La fecha es en el pasado? (Rechazar).
+   - ¿El año es anterior a ${currentYear}? (Corregir al usuario).
+   - Si dice "lunes", calcula la fecha exacta basada en la **Fecha Actual**.
+4. **Decisión:**
+   - Si falta información -> Pregunta por el dato faltante.
+   - Si la fecha es errónea -> Aclara el error.
+   - Debes SIEMPRE confirmar con el usuario antes de agendar.
+   - Si todo está bien -> Llama a \`bookAppointment\`.
+
+**EJEMPLOS DE INTERACCIÓN:**
+
+**Ejemplo 1: Flujo Ideal**
+Usuario: "Hola, quiero agendar una cita."
+Asistente (Pensamiento): "Intención: Agendar. Faltan datos: Nombre, Fecha, Duración."
+Asistente: "Claro, ¿me podría dar su nombre y para cuándo le gustaría la cita?"
+Usuario: "Soy Carlos, para mañana a las 3 de la tarde por media hora."
+Asistente (Pensamiento): "Datos: Carlos, Mañana 3pm, 30 min. Fecha válida. Procedo."
+Asistente: (Llama a tool bookAppointment) "Listo Carlos, agendando para mañana a las 3pm."
+
+**Ejemplo 2: Validación de Año**
+Usuario: "Quiero cita para el 10 de octubre de 2023."
+Asistente (Pensamiento): "Año solicitado: 2023. Año actual: ${currentYear}. Es pasado."
+Asistente: "Disculpe, el año 2023 ya pasó. ¿Se refiere a este año o al próximo?"
+
+**Ejemplo 3: Datos Faltantes**
+Usuario: "Necesito una cita para el viernes."
+Asistente (Pensamiento): "Falta hora, duración y nombre. Preguntaré lo más importante primero."
+Asistente: "¿A qué hora le gustaría el viernes y cuál es su nombre?"
+
+**Ejemplo 4: Ambigüedad**
+Usuario: "Resérvame."
+Asistente (Pensamiento): "Intención clara, pero faltan todos los detalles."
+Asistente: "Con gusto. ¿Para qué día y hora, y a nombre de quién?"
+
+**Ejemplo 5: Confirmación Implícita**
+Usuario: "Soy Ana, el martes a las 10am, una hora."
+Asistente (Pensamiento): "Tengo todo. Ana, Martes próximo 10am, 60 min. Validando fecha... Correcto."
+Asistente: (Llama a tool bookAppointment) "Perfecto Ana, queda agendado para el martes a las 10."
+
+**Instrucciones Finales:**
+- NO inventes fechas.
+- Si el usuario no especifica duración, asume 30 minutos pero confírmalo.
+- Sé amable pero eficiente.
 `;
 
     if (personality.enterpriseInformation) {

@@ -64,8 +64,14 @@ export class TwilioService {
    *
    * @param streamUrl - WebSocket URL for Media Streams (e.g., wss://your-domain.com/twilio/media-stream)
    */
-  generateIncomingCallTwiML(streamUrl?: string): string {
+  generateIncomingCallTwiML(
+    streamUrl?: string,
+    receptionistId?: string,
+  ): string {
     this.logger.log('Generating TwiML for incoming VoIP call');
+    this.logger.log(
+      `Stream URL: ${streamUrl}, Receptionist ID: ${receptionistId}`,
+    );
 
     // If no stream URL provided, use simple greeting
     if (!streamUrl) {
@@ -82,20 +88,9 @@ export class TwilioService {
 <Response>
     <Say voice="Polly.Joanna">Connecting you to our AI receptionist.</Say>
     <Connect>
-        <Stream url="${streamUrl}" />
-    </Connect>
-</Response>`;
-  }
-
-  /**
-   * Generate TwiML for Media Streams (future implementation)
-   */
-  generateMediaStreamTwiML(streamUrl: string): string {
-    return `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-    <Say voice="Polly.Joanna">Connecting to our AI receptionist.</Say>
-    <Connect>
-        <Stream url="${streamUrl}" />
+        <Stream url="${streamUrl}">
+            <Parameter name="receptionistId" value="${receptionistId}" />
+        </Stream>
     </Connect>
 </Response>`;
   }

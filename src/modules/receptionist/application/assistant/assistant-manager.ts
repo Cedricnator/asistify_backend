@@ -58,9 +58,18 @@ export class AssistantManager {
       );
     }
 
+    const receptionistPersonality: ReceptionistPersonality = {
+      name: receptionist.name,
+      levelFormality: receptionist.levelFormality,
+      levelDynamism: receptionist.levelDynamism,
+      enterpriseInformation: receptionist.enterpriseInformation!,
+      clientInformation: receptionist.clientInformation!,
+      businessRestrictions: receptionist.businessRestrictions!,
+    }
+
     this.logger.debug('Initializing voice session... with calendarId: ', calendarId);
     return await this.voiceAgent.initializeSession(
-      personality,
+      receptionistPersonality,
       receptionistId,
       calendarId || undefined,
     );

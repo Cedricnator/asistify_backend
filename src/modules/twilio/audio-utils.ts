@@ -32,74 +32,55 @@ export function hasAudioSignal(pcmBuffer: Buffer): boolean {
  * @param mulawBuffer - Buffer containing μ-law encoded audio from Twilio
  * @returns Buffer containing 16-bit PCM audio at 16kHz for Gemini
  */
+// Pre-compute μ-law to linear PCM lookup table
+const MU_LAW_DECODE_TABLE = new Int16Array(256);
+for (let i = 0; i < 256; i++) {
+  const mu = ~i;
+  const sign = (mu & 0x80) >> 7;
+  const exponent = (mu & 0x70) >> 4;
+  const mantissa = mu & 0x0F;
+  let sample = ((mantissa << 3) + 0x84) << exponent;
+  sample -= 0x84;
+  if (sign === 0) sample = -sample;
+  MU_LAW_DECODE_TABLE[i] = sample;
+}
+
 /**
  * Convert Twilio μ-law 8kHz audio to Gemini PCM 16kHz format
- * Returns a payload object ready to send to Gemini Live API:
- * { mimeType: 'audio/pcm;rate=16000', data: '<base64>' }
+ * Optimized version: Uses lookup table and simple sample duplication (upsampling)
+ * @param mulawBuffer - Buffer containing μ-law encoded audio from Twilio
+ * @returns Payload object ready to send to Gemini Live API
  */
 export function twilioToGeminiAudio(mulawBuffer: Buffer): {
   mimeType: string;
   data: string;
 } {
   try {
-    const wav = new WaveFile();
+    // Calculate output size: input length * 2 (bytes per sample) * 2 (upsampling 8k->16k)
+    const outputSize = mulawBuffer.length * 4;
+    const pcmBuffer = Buffer.allocUnsafe(outputSize);
 
-    // Create μ-law WAV: 1 channel, 8kHz, 8-bit μ-law
-    wav.fromScratch(1, 8000, '8m', Array.from(mulawBuffer));
+    let offset = 0;
+    for (let i = 0; i < mulawBuffer.length; i++) {
+      const byte = mulawBuffer[i];
+      const sample = MU_LAW_DECODE_TABLE[byte];
 
-    // Convert μ-law to PCM
-    wav.fromMuLaw();
-
-    // Convert to 16-bit PCM
-    wav.toBitDepth('16');
-
-    // Resample to 16kHz
-    wav.toSampleRate(16000);
-
-    // Extract numeric samples from the WaveFile. The wavefile library
-    // may return either floats in [-1,1] or integer sample values
-    // depending on the internal representation. Normalize both cases
-    // to signed 16-bit little-endian PCM (linear16) which the Live API
-    // expects for mimeType 'audio/pcm;rate=16000'.
-    // wavefile returns a typed array (Float64Array). Convert to a plain
-    // number[] to make subsequent handling and TS typing straightforward.
-    const samples = Array.from(wav.getSamples(false) as Float64Array);
-
-    // Convert numeric samples to Int16LE Buffer (raw PCM, no WAV header)
-    const pcmBuffer = Buffer.alloc(samples.length * 2);
-    for (let i = 0; i < samples.length; i++) {
-      const s = samples[i];
-      let intSample = 0;
-
-      if (typeof s === 'number' && Number.isFinite(s)) {
-        // If sample is float in [-1,1], scale to 16-bit range
-        if (Math.abs(s) <= 1) {
-          intSample = Math.round(s * 32767);
-        } else {
-          // Already integer-like sample
-          intSample = Math.round(s);
-        }
-      }
-
-      // Clamp to int16 range
-      if (intSample > 32767) intSample = 32767;
-      if (intSample < -32768) intSample = -32768;
-
-      pcmBuffer.writeInt16LE(intSample, i * 2);
+      // Write 16-bit sample twice (upsampling 8kHz -> 16kHz)
+      pcmBuffer.writeInt16LE(sample, offset);
+      offset += 2;
+      pcmBuffer.writeInt16LE(sample, offset);
+      offset += 2;
     }
 
-    // Return payload ready for Gemini Live API: raw PCM bytes (base64) and matching mimeType
     return {
       mimeType: 'audio/pcm;rate=16000',
       data: pcmBuffer.toString('base64'),
     };
   } catch (error) {
     console.error('Error converting Twilio to Gemini audio:', error);
-    // Fallback to an empty payload (silence)
-    const empty = Buffer.alloc(1600, 0);
     return {
       mimeType: 'audio/pcm;rate=16000',
-      data: empty.toString('base64'),
+      data: '',
     };
   }
 }
