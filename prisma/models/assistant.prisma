@@ -16,6 +16,7 @@ model Receptionist {
   metrics               Metric[]
   avatar                Avatar     @relation(fields: [avatarId], references: [id], onDelete: Cascade)
   enterprise            Enterprise @relation(fields: [enterpriseId], references: [id], onDelete: Cascade)
+  callHistory           CallHistory[]
 
   @@map("receptionist")
 }

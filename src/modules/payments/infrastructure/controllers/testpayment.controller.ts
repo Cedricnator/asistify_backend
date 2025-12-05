@@ -53,13 +53,10 @@ export class TestPaymentController {
   @HttpCode(200)
   async findOne(
     @Query('suscriptionId') suscriptionId: string,
-    @Query('enterpriseId', ) enterpriseId: string,
-    @Query('flowClientId' ) flowclientId: string,
   ): Promise<SuscriptionEntity> {
     let command:GetSuscriptionCommand={
         suscriptionId,
-        enterpriseId,
-        flowclientId
+        
     }
     return await this.getSuscriptionUseCase.execute(command);
   }

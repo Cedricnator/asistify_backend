@@ -71,15 +71,84 @@ export class DocumentPrismaRepository implements DocumentRepository {
   }
 
   async findAll(params: {
+    enterpriseId: string;
     page?: number;
     limit?: number;
     name?: string;
-  }): Promise<DocumentEntity[]> {
+  }): Promise<{
+    data: DocumentEntity[];
+    metadata: {
+      limit: number;
+      actualPage: number;
+      nextPage: number | null;
+      totalPages: number;
+    };
+  }> {
     this.logger.log(
       `Finding documents with params: ${JSON.stringify(params, null, 2)}`,
     );
-    const documents = await this.prismaService.document.findMany();
-    return documents.map((doc) => this.mapToDomain(doc));
+    const page = params.page ?? 1;
+    const limit = params.limit ?? 10;
+    const skip = (page - 1) * limit;
+
+    const [documents, total] = await Promise.all([
+      this.prismaService.document.findMany({
+        where: {
+          enterprise_id: params.enterpriseId,
+        },
+        skip,
+        take: limit,
+        include: {
+          document_chunks: true,
+        },
+      }),
+      this.prismaService.document.count({
+        where: {
+          enterprise_id: params.enterpriseId,
+        },
+      }),
+    ]);
+
+    const totalPages = Math.ceil(total / limit);
+    const nextPage = page < totalPages ? page + 1 : null;
+
+    // Fetch chunk count for each document
+    // Helper to map chunk to domain entity
+    const mapToChunkDomain = (chunk: any) => {
+      return {
+        id: chunk.id,
+        index: chunk.index,
+        content: chunk.content,
+        documentId: chunk.document_id,
+        embedding: chunk.embedding ?? null,
+        keywords: chunk.keywords ?? [],
+        metadata: chunk.metadata,
+        document_chunk_type_id: chunk.document_chunk_type_id,
+        createdAt: chunk.created_at,
+      };
+    };
+
+    const data = await Promise.all(
+      documents.map(async (doc) => {
+        const chunkCount = doc.document_chunks ? doc.document_chunks.length : 0;
+        const chunks = doc.document_chunks ? doc.document_chunks.map(mapToChunkDomain) : [];
+        return {
+          ...this.mapToDomain(doc),
+          chunkCount,
+          chunks,
+        };
+      }),
+    );
+
+    return {
+      data,
+      metadata: {
+        limit,
+        actualPage: page,
+        nextPage,
+        totalPages,
+      },
+    };
   }
 
   async findOne(id: string): Promise<DocumentEntity> {
@@ -87,6 +156,9 @@ export class DocumentPrismaRepository implements DocumentRepository {
       this.logger.log(`Finding document with ID: ${id}`);
       const document = await this.prismaService.document.findUnique({
         where: { id },
+        include: {
+          document_chunks: true,
+        },
       });
 
       if (!document)

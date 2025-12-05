@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   HttpCode,
+  Logger,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -38,8 +39,12 @@ export class ReceptionistController {
   @HttpCode(201)
   async create(
     @Body() dto: CreateReceptionistDto,
+    @EnterpriseId() enterpriseId: string,
   ): Promise<ReceptionistEntity> {
-    return await this.createReceptionistUseCase.execute(dto);
+    return await this.createReceptionistUseCase.execute({
+      ...dto,
+      enterpriseId,
+    });
   }
 
   @Version('1')
@@ -50,6 +55,7 @@ export class ReceptionistController {
     @Query('page') page?: number,
     @Query('limit') limit?: number,
   ): Promise<PaginatedResponseDto<ReceptionistEntity>> {
+    Logger.log(enterpriseId);
     return await this.findAllReceptionistsUseCase.execute({
       enterpriseId,
       page,

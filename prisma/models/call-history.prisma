@@ -1,0 +1,13 @@
+model CallHistory {
+  id               String       @id @default(uuid())
+  date             DateTime
+  client_name      String       @map("client_name") @db.VarChar(255)
+  duration_seconds Int          @map("duration_seconds") @default(0)
+  receptionist_id  String       @map("receptionist_id")
+  receptionist     Receptionist @relation(fields: [receptionist_id], references: [id], onDelete: Cascade)
+  state            String       @db.VarChar(50)
+  created_at       DateTime     @default(now()) @map("created_at")
+  updated_at       DateTime     @updatedAt @map("updated_at")
+
+  @@map("call_history")
+}

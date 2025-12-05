@@ -6,7 +6,9 @@ import { Injectable } from '@nestjs/common';
 export class DocumentsCountAdapter implements DocumentsCountPort {
   constructor(private readonly findDocumentsUseCase: FindDocumentsUseCase) {}
   async getDocumentsCount(idEnterprise: string): Promise<number> {
-    const documents = await this.findDocumentsUseCase.execute();
-    return documents.length;
+    const documents = await this.findDocumentsUseCase.execute({
+      enterpriseId: idEnterprise,
+    });
+    return documents.data.length;
   }
 }

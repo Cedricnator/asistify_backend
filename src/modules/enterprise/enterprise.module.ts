@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { CreateEnterpriseUseCase } from './application/use-cases/enterprise/create-enterprise.use-case';
 import { FindEnterprisesUseCase } from './application/use-cases/enterprise/find-enterprises.use-case';
 import { FindEnterpriseByIdUseCase } from './application/use-cases/enterprise/find-enterprise-by-id.use-case';
@@ -23,6 +23,8 @@ import { EnterpriseProfilePrismaRepository } from './infrastructure/prisma/enter
 import { ProfileModule } from '../profile/profile.module';
 import { SUSCRIPTION_REPOSITORY } from '../payments/domain/repositories/suscription.repository';
 import { SuscriptionRepositoryAdapter } from '../payments/infrastructure/prisma/suscription.repository.adapter';
+import { CreateCalendarUseCase } from '../calendar/application/use-cases/create-calendar.use-case';
+import { CalendarModule } from '../calendar/calendar.module';
 
 @Module({
   providers: [
@@ -41,6 +43,8 @@ import { SuscriptionRepositoryAdapter } from '../payments/infrastructure/prisma/
     FindEnterpriseProfilesByProfileUseCase,
     DeleteEnterpriseProfileUseCase,
 
+    CreateCalendarUseCase,
+
     {
       provide: ENTERPRISE_REPOSITORY,
       useClass: EnterprisePrismaRepository,
@@ -58,11 +62,12 @@ import { SuscriptionRepositoryAdapter } from '../payments/infrastructure/prisma/
       useClass: SuscriptionRepositoryAdapter,
     },
   ],
+  exports:[FindEnterpriseByIdUseCase],
   controllers: [
     EnterpriseController,
     EnterpriseCategoryController,
     EnterpriseProfileController,
   ],
-  imports: [ProfileModule],
+  imports: [ProfileModule, forwardRef(() => CalendarModule)],
 })
 export class EnterpriseModule {}

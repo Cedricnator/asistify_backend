@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { CreateEnterpriseCommand } from 'src/modules/enterprise/domain/commands/create-enterprise.command';
+import { CreateCalendarUseCase } from 'src/modules/calendar/application/use-cases/create-calendar.use-case';
 import { EnterpriseEntity } from 'src/modules/enterprise/domain/entities/enterprise.entity';
 import {
   ENTERPRISE_REPOSITORY,
@@ -11,9 +11,23 @@ export class CreateEnterpriseUseCase {
   constructor(
     @Inject(ENTERPRISE_REPOSITORY)
     private readonly repo: EnterpriseRepository,
+    private readonly createCalendarUseCase: CreateCalendarUseCase,
   ) {}
 
-  async execute(params: CreateEnterpriseCommand): Promise<EnterpriseEntity> {
-    return await this.repo.create(params);
+  async execute(params: {
+    name: string;
+    categoryId: string;
+    subscriptionId?: string;
+  }): Promise<EnterpriseEntity> {
+    const calendar = await this.createCalendarUseCase.execute({
+      summary: params.name,
+    });
+    const enterprise = await this.repo.create({
+      name: params.name,
+      categoryId: params.categoryId,
+      calendarId: calendar.id,
+      subscriptionId: params.subscriptionId,
+    });
+    return enterprise;
   }
 }

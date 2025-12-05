@@ -17,6 +17,7 @@ import { DeleteEnterpriseProfileUseCase } from '../../application/use-cases/ente
 import { CreateEnterpriseProfileDto } from '../dtos/create-enterprise-profile.dto';
 import { EnterpriseProfileEntity } from '../../domain/entities/enterprise-profile.entity';
 import { PaginatedResponseDto } from 'src/common/dtos/paginated-response.dto';
+import { Public } from '../../../auth/infrastructure/decorators/public.decorator';
 
 @Controller('enterprise-profiles')
 export class EnterpriseProfileController {
@@ -28,6 +29,7 @@ export class EnterpriseProfileController {
   ) {}
 
   @Version('1')
+  @Public()
   @Post()
   @HttpCode(201)
   async create(

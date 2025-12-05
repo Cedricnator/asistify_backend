@@ -6,16 +6,22 @@ import {
 } from '../../domain/ports/out/calendar-dates.port';
 import { CalendarMetric } from '../../domain/entities/calendar-metric.entity';
 import { DateSummaryDto } from '../../domain/dto/date-summary.dto';
+import {
+  ENTERPRISE_REPOSITORY,
+  type EnterpriseRepository,
+} from '../../../enterprise/domain/repositories/enterprise.repository';
 
 @Injectable()
 export class GoogleCalendarMetricsAdapter implements CalendarMetricPort {
   constructor(
     @Inject(CALENDAR_DATES_PORT)
     private readonly calendarDatesPort: CalendarDatesPort,
+    @Inject(ENTERPRISE_REPOSITORY)
+    private readonly enterpriseRepository: EnterpriseRepository,
   ) {}
 
   async getMetrics(idEnterprise: string): Promise<CalendarMetric> {
-    const calendarId = this.getCalendarIdFromEnterprise(idEnterprise);
+    const calendarId = await this.getCalendarIdFromEnterprise(idEnterprise);
 
     const dates: DateSummaryDto[] =
       await this.calendarDatesPort.listDates(calendarId);
@@ -29,9 +35,17 @@ export class GoogleCalendarMetricsAdapter implements CalendarMetricPort {
       metrics.toConfirm,
     );
   }
-  private getCalendarIdFromEnterprise(idEnterprise: string): string {
-    // TODO: Implement logic to retrieve calendar ID based on enterprise ID
-    return 'primary';
+  private async getCalendarIdFromEnterprise(
+    idEnterprise: string,
+  ): Promise<string> {
+    const enterprise = await this.enterpriseRepository.findById(idEnterprise);
+    if (!enterprise) {
+      throw new Error('Enterprise not found');
+    }
+    if (!enterprise.calendarId) {
+      throw new Error('Enterprise does not have a calendar ID yet');
+    }
+    return enterprise.calendarId;
   }
   private stats(dates: DateSummaryDto[]): {
     availableCount: number;

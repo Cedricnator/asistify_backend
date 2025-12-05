@@ -13,6 +13,9 @@ export class ReceptionistPrismaRepository implements ReceptionistRepository {
   async create(params: CreateReceptionistCommand): Promise<ReceptionistEntity> {
     const receptionist = await this.prismaService.receptionist.create({
       data: ReceptionistMapper.toCreate(params),
+      include: {
+        avatar: true,
+      },
     });
 
     return ReceptionistMapper.toDomain(receptionist);
@@ -22,6 +25,9 @@ export class ReceptionistPrismaRepository implements ReceptionistRepository {
     const receptionsit = await this.prismaService.receptionist.findUnique({
       where: {
         id: id,
+      },
+      include: {
+        avatar: true,
       },
     });
 
@@ -45,6 +51,9 @@ export class ReceptionistPrismaRepository implements ReceptionistRepository {
       this.prismaService.receptionist.findMany({
         where: {
           enterpriseId: params.enterpriseId,
+        },
+        include: {
+          avatar: true,
         },
         skip,
         take: limit,
@@ -76,6 +85,9 @@ export class ReceptionistPrismaRepository implements ReceptionistRepository {
         id: params.id,
       },
       data: ReceptionistMapper.toUpdate(params),
+      include: {
+        avatar: true,
+      },
     });
     return ReceptionistMapper.toDomain(updated);
   }
