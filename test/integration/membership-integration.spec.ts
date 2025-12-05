@@ -21,6 +21,7 @@ describe('Membership Integration', () => {
     });
   });
   describe('post membership', () => {
+    let createdMembershipId: string;
     it('post membership', async () => {
       const membership: CreateMembershipDto = {
         name: 'Plan Enterprise ' + Date.now(),
@@ -38,6 +39,13 @@ describe('Membership Integration', () => {
         .send(membership);
       expect(response.status).toBe(201);
       expect(response.body.name).toMatch(/Plan Enterprise/);
+      createdMembershipId = response.body.id;
+    });
+    it('delete membership', async () => {
+      const responseGet = await request(app.getHttpServer()).delete(
+        '/membership/' + createdMembershipId,
+      );
+      expect(responseGet.status).toBe(200);
     });
   });
 });

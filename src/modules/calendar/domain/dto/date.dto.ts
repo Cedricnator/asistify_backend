@@ -4,7 +4,7 @@ import { ApiProperty } from '@nestjs/swagger';
 export class DateDto {
     @ApiProperty({ description: 'Displayed name for the calendar', required: true })
     @IsString()
-    calendarId: string;
+    calendarId?: string;
     eventId:string;
     name:string;
     startDatetime:Date
