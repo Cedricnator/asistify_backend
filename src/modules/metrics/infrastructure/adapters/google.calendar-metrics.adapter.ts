@@ -10,6 +10,7 @@ import {
   ENTERPRISE_REPOSITORY,
   type EnterpriseRepository,
 } from '../../../enterprise/domain/repositories/enterprise.repository';
+import { CalendarEventState } from '../../../receptionist/domain/enums/calendar.enums';
 
 @Injectable()
 export class GoogleCalendarMetricsAdapter implements CalendarMetricPort {
@@ -55,14 +56,11 @@ export class GoogleCalendarMetricsAdapter implements CalendarMetricPort {
     let availableCount = 5;
     let confirmed = 0;
     let toConfirm = 0;
-    const CONFIRMED_KEYWORD = 'confirmada';
-    const TO_CONFIRM_KEYWORD = 'por confirmar';
-    const FREE_KEYWORD = 'libre';
     for (const date of dates) {
       const nameLower = date.name.toLowerCase();
-      if (nameLower.includes(CONFIRMED_KEYWORD)) {
+      if (nameLower.includes(CalendarEventState.SCHEDULED)) {
         confirmed++;
-      } else if (nameLower.includes(TO_CONFIRM_KEYWORD)) {
+      } else if (nameLower.includes(CalendarEventState.PENDING)) {
         toConfirm++;
       } else {
         availableCount++;

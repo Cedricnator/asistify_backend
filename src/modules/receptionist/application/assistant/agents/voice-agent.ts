@@ -4,6 +4,7 @@ import { GoogleGenAI, Modality, Type } from '@google/genai';
 import { ReceptionistPersonality } from '../types/receptionist-personality';
 import { CreateDateUseCase } from '../../../../calendar/application/use-cases/create-date.use-case';
 import { RetrivalService } from '../../../../chunks/application/services/retrival.service';
+import { CalendarEventState } from '../../../domain/enums/calendar.enums';
 
 /**
  * VoiceAgent - Gemini Live API integration for real-time voice interactions
@@ -354,7 +355,7 @@ export class VoiceAgent implements OnModuleInit {
 
                       const event = await this.createDateUseCase.execute({
                         calendarId: this.calendarId,
-                        name: `Cita: ${args.clientName}`,
+                        name: `Cita: ${args.clientName} + " ${CalendarEventState.PENDING}"`,
                         startDatetime: start,
                         endDatetime: end,
                         timezone: 'America/Santiago', // Default or fetch from config
