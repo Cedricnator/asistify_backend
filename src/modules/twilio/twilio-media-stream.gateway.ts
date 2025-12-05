@@ -117,7 +117,7 @@ export class TwilioMediaStreamGateway
         break;
 
       case 'media':
-        // await this.handleMedia(client, data);
+        await this.handleMedia(client, data);
         break;
 
       case 'dtmf':
@@ -240,7 +240,7 @@ export class TwilioMediaStreamGateway
 
       this.logger.log('Voice agent connected and ready');
 
-      // Send an initial text message to start the conversation
+      // Send an initial text message to start the conversation (for debugging)
       try {
         await agent.sendText('Hola, quiero agendar una hora.');
         this.logger.log('Sent initial greeting to Gemini');
@@ -307,56 +307,12 @@ export class TwilioMediaStreamGateway
 
     // Send real Twilio audio to Gemini Live API
     try {
-      const hasSignal = hasAudioSignal(pcm16khz);
-
-      const now = Date.now();
-      if (hasSignal && this.sendingBlocked.get(client) !== true) {
-        // Update last-non-silent timestamp
-        this.lastNonSilentAt.set(client, now);
-
+      // In Push-to-Talk mode, we trust the mute state.
+      // If we are not blocked (unmuted), we send ALL audio, even silence/background noise.
+      // This ensures soft speech is not cut off.
+      if (this.sendingBlocked.get(client) !== true) {
         // Send the prepared payload to the VoiceAgent (Gemini)
         await agent.sendAudio(geminiPayload);
-      } else if (!hasSignal && this.sendingBlocked.get(client) !== true) {
-        // No signal detected in this packet. Check if we've seen
-        // silence for longer than the configured threshold and
-        // if so, optionally force end the turn.
-        // Only start silence detection after the user has spoken at least once.
-        if (this.lastNonSilentAt.has(client)) {
-          const silenceThresholdMs = Number(
-            this.configService.get('SILENCE_FORCE_END_MS') || 700,
-          );
-          const throttleMs = Number(
-            this.configService.get('SILENCE_FORCE_THROTTLE_MS') || 2000,
-          );
-
-          const lastNonSilent = this.lastNonSilentAt.get(client)!;
-          const elapsed = now - lastNonSilent;
-          if (elapsed >= silenceThresholdMs) {
-            const lastForced = this.lastForcedEndAt.get(client) || 0;
-            if (now - lastForced >= throttleMs) {
-              try {
-                // Prevent further audio from being forwarded while we force end the turn
-                this.sendingBlocked.set(client, true);
-                await agent.forceEndTurn();
-                this.lastForcedEndAt.set(client, now);
-                this.logger.log(
-                  `Forced turnComplete after ${elapsed}ms of silence (threshold=${silenceThresholdMs}ms)`,
-                );
-              } catch (err) {
-                this.logger.error(
-                  'Error forcing turnComplete:',
-                  err?.message || err,
-                );
-              }
-            }
-          }
-        }
-
-        // Skip sending the silent frame to Gemini to avoid churn
-        this.logger.debug(
-          'Skipping send: no audio signal detected in incoming Twilio packet',
-        );
-        return;
       }
     } catch (err) {
       this.logger.error(
@@ -408,6 +364,14 @@ export class TwilioMediaStreamGateway
     switch (digit) {
       case '1':
         isMuted = true;
+        // When user mutes (finishes talking), force end the turn immediately
+        // This tells Gemini "I'm done talking, now you respond"
+        const agent = this.sessions.get(client);
+        if (agent) {
+          agent.forceEndTurn().catch((err) => {
+            this.logger.error('Error forcing end turn on mute:', err);
+          });
+        }
         break;
       case '0':
         isMuted = false;

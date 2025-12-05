@@ -1,56 +1,41 @@
 // typescript
-import {
-  CanActivate,
-  ExecutionContext,
-  INestApplication,
-} from '@nestjs/common';
+import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AppModule } from '../../src/app.module';
 import request from 'supertest';
-import type {
-  AuthStrategy,
-  Calendar,
-  CalendarRepositoryPort,
-} from '../types/calendar';
+import type { CalendarRepositoryPort } from '../types/calendar';
 import { CountReceptionistUseCase } from '../../src/modules/receptionist/application/use-cases/recepcionist/count-receptionist.use-case';
-import { SupabaseAuthGuard } from '../../src/modules/auth/infrastructure/guards/supabase-auth.guard';
+import { CALENDAR_METRICS } from '../../src/modules/metrics/domain/ports/out/calendar-metric.port';
 
 describe('DashboardIntegration', () => {
   let app: INestApplication;
 
   // mocked calendar data (add the other 2 entities you need here)
-  const mockCalendars: Calendar[] = [
-    {
-      id: 'cal-1',
-      summary: 'Primary Calendar',
-      dates: [{ id: 'e1', title: 'Event 1' }],
-    },
-    {
-      id: 'cal-2',
-      summary: 'Team Calendar',
-      dates: [{ id: 'e2', title: 'Event 2' }],
-    },
-    // additional mocked entities to cover other cases:
-    { id: 'cal-3', summary: 'Shared Calendar', dates: [] },
-  ];
+  const mockCalendarsMetricsPort = {
+    getMetrics: jest.fn().mockImplementation(() => ({})),
+  };
 
   // Provide a flexible mock that covers several possible repository method names
   const mockCalendarRepo: CalendarRepositoryPort & Record<string, any> = {
     // common name used in the repo in earlier example
-    findAllForUser: jest.fn().mockResolvedValue(mockCalendars),
+    findAllForUser: jest.fn().mockResolvedValue(mockCalendarsMetricsPort),
     // alternate possible method names that code may call
-    findAll: jest.fn().mockResolvedValue(mockCalendars),
-    listForUser: jest.fn().mockResolvedValue(mockCalendars),
+    findAll: jest.fn().mockResolvedValue(mockCalendarsMetricsPort),
+    listForUser: jest.fn().mockResolvedValue(mockCalendarsMetricsPort),
     // find by id
     findById: jest
       .fn()
       .mockImplementation((id: string) =>
-        Promise.resolve(mockCalendars.find((c) => c.id === id) ?? null),
+        Promise.resolve(
+          mockCalendarsMetricsPort.find((c) => c.id === id) ?? null,
+        ),
       ),
     getById: jest
       .fn()
       .mockImplementation((id: string) =>
-        Promise.resolve(mockCalendars.find((c) => c.id === id) ?? null),
+        Promise.resolve(
+          mockCalendarsMetricsPort.find((c) => c.id === id) ?? null,
+        ),
       ),
     // other methods the app might call — return empty or reasonable defaults
     save: jest.fn().mockResolvedValue(undefined),
@@ -60,58 +45,18 @@ describe('DashboardIntegration', () => {
     execute: jest.fn().mockResolvedValue(5),
   };
 
-  // stub for Google strategy adapter — return a simple validated user payload
-  const mockGoogleStrategy: AuthStrategy & Record<string, any> = {
-    validate: jest
-      .fn()
-      .mockResolvedValue({ id: 'test-user', email: 'test@example.com' }),
-    authenticate: jest.fn(),
-  };
   const mockEnterpriseIdDecorator = jest.fn().mockReturnValue('enterprise-123');
-  const mockAuthGuard: CanActivate = {
-    canActivate: (context: ExecutionContext) => {
-      const req = context.switchToHttp().getRequest();
 
-      // AQUÍ ESTÁ EL TRUCO: Simulamos lo que Supabase haría
-      req.user = {
-        app_metadata: {
-          enterprise_id: 'empresa-123-test', // El ID que tu decorador leerá
-        },
-        email: 'test@example.com',
-      };
-
-      return true; // Permitir acceso
-    },
-  };
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
-      .overrideGuard(SupabaseAuthGuard)
-      .useValue(mockAuthGuard)
       .overrideProvider(CountReceptionistUseCase)
       .useValue(mockCountReceptionistUseCase) // provide empty mock for other dependencies if needed
-      // override repository adapter with the mock — try several likely provider tokens
-      .overrideProvider('CalendarRepositoryAdapter')
-      .useValue(mockCalendarRepo)
-      .overrideProvider('CalendarRepoAdapter')
-      .useValue(mockCalendarRepo)
-      .overrideProvider('CalendarAdapter')
-      .useValue(mockCalendarRepo)
-      .overrideProvider('CalendarRepository')
-      .useValue(mockCalendarRepo)
-      // also try class tokens as strings (if the project registers that way)
       .overrideProvider('calendarRepository')
       .useValue(mockCalendarRepo)
-      // ensure strategy selection uses the Google strategy implementation — override likely tokens
-      .overrideProvider('GoogleStrategyAdapter')
-      .useValue(mockGoogleStrategy)
-      .overrideProvider('GoogleStrategy')
-      .useValue(mockGoogleStrategy)
-      .overrideProvider('AuthStrategy')
-      .useValue(mockGoogleStrategy)
-      .overrideProvider('googleStrategy')
-      .useValue(mockGoogleStrategy)
+      .overrideProvider(CALENDAR_METRICS)
+      .useValue(mockCalendarsMetricsPort)
       .compile();
 
     app = moduleFixture.createNestApplication();
@@ -158,13 +103,16 @@ describe('DashboardIntegration', () => {
 
       expect(response.body).toHaveProperty('overview');
       expect(response.body).toHaveProperty('callHistory');
+      expect(response.body).toHaveProperty('calendarMetrics');
     });
     it('should return 5 receptionis count', async () => {
       const response = await request(app.getHttpServer())
         .get('/dashboard')
         .set('Authorization', 'Bearer dev-token-123');
-      console.log(response);
+      console.log(response.body);
       expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('overview');
+      expect(response.body.overview.countReceptionist).toBe(5);
     });
   });
 });
