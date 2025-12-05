@@ -1,19 +1,10 @@
 // typescript
-import {
-  CanActivate,
-  ExecutionContext,
-  INestApplication,
-} from '@nestjs/common';
+import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AppModule } from '../../src/app.module';
 import request from 'supertest';
-import type {
-  AuthStrategy,
-  Calendar,
-  CalendarRepositoryPort,
-} from '../types/calendar';
+import type { Calendar, CalendarRepositoryPort } from '../types/calendar';
 import { CountReceptionistUseCase } from '../../src/modules/receptionist/application/use-cases/recepcionist/count-receptionist.use-case';
-import { SupabaseAuthGuard } from '../../src/modules/auth/infrastructure/guards/supabase-auth.guard';
 
 describe('DashboardIntegration', () => {
   let app: INestApplication;
@@ -60,35 +51,12 @@ describe('DashboardIntegration', () => {
     execute: jest.fn().mockResolvedValue(5),
   };
 
-  // stub for Google strategy adapter — return a simple validated user payload
-  const mockGoogleStrategy: AuthStrategy & Record<string, any> = {
-    validate: jest
-      .fn()
-      .mockResolvedValue({ id: 'test-user', email: 'test@example.com' }),
-    authenticate: jest.fn(),
-  };
   const mockEnterpriseIdDecorator = jest.fn().mockReturnValue('enterprise-123');
-  const mockAuthGuard: CanActivate = {
-    canActivate: (context: ExecutionContext) => {
-      const req = context.switchToHttp().getRequest();
 
-      // AQUÍ ESTÁ EL TRUCO: Simulamos lo que Supabase haría
-      req.user = {
-        app_metadata: {
-          enterprise_id: 'empresa-123-test', // El ID que tu decorador leerá
-        },
-        email: 'test@example.com',
-      };
-
-      return true; // Permitir acceso
-    },
-  };
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
-      .overrideGuard(SupabaseAuthGuard)
-      .useValue(mockAuthGuard)
       .overrideProvider(CountReceptionistUseCase)
       .useValue(mockCountReceptionistUseCase) // provide empty mock for other dependencies if needed
       // override repository adapter with the mock — try several likely provider tokens
@@ -103,15 +71,6 @@ describe('DashboardIntegration', () => {
       // also try class tokens as strings (if the project registers that way)
       .overrideProvider('calendarRepository')
       .useValue(mockCalendarRepo)
-      // ensure strategy selection uses the Google strategy implementation — override likely tokens
-      .overrideProvider('GoogleStrategyAdapter')
-      .useValue(mockGoogleStrategy)
-      .overrideProvider('GoogleStrategy')
-      .useValue(mockGoogleStrategy)
-      .overrideProvider('AuthStrategy')
-      .useValue(mockGoogleStrategy)
-      .overrideProvider('googleStrategy')
-      .useValue(mockGoogleStrategy)
       .compile();
 
     app = moduleFixture.createNestApplication();
