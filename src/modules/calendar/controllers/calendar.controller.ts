@@ -30,6 +30,7 @@ import { google } from 'googleapis';
 import { Public } from 'src/modules/auth/infrastructure/decorators/public.decorator';
 import { EnterpriseId } from 'src/modules/auth/infrastructure/decorators/enterprise-id.decorator';
 import { RequiresSuscriptionGuard } from 'src/modules/payments/infrastructure/middleware/requires-suscription.guard';
+import { FindEnterpriseByIdUseCase } from 'src/modules/enterprise/application/use-cases/enterprise/find-enterprise-by-id.use-case';
 
 @ApiTags('users')
 @Controller('calendar')
@@ -43,6 +44,7 @@ export class CalendarController {
     private readonly getDateUseCase: GetDateUseCase,
     private readonly updateDateUseCase: UpdateDateUseCase,
     private readonly deleteDateUseCase: DeleteDateUseCase,
+    private readonly findEnterpriseByIdUseCase:FindEnterpriseByIdUseCase
   ) {}
 
   @Version('1')
@@ -55,9 +57,10 @@ export class CalendarController {
   @Version('1')
   @Post('date')
   @ApiOperation({ summary: 'Create a new date on a calendar' })
-  async createDate(@Body() dto: CreateDateDto): Promise<CreateDateDto> {
+  async createDate(@EnterpriseId() enterpriseId:string,@Body() dto: CreateDateDto): Promise<CreateDateDto> {
+    let calendarId=dto.calendarId??(await this.findEnterpriseByIdUseCase.execute(enterpriseId)).calendarId!
     const command: CreateDateCommand = {
-      calendarId: dto.calendarId,
+      calendarId: calendarId,
       name: dto.name,
       startDatetime: new Date(dto.startDatetime),
       endDatetime: new Date(dto.startDatetime),
@@ -77,7 +80,10 @@ export class CalendarController {
   @Version('1')
   @Get('dates')
   @ApiOperation({ summary: 'List calendar events' })
-  async list(@Query('calendarId') calendarId): Promise<DateDto[]> {
+  async list(@EnterpriseId() enterpriseId:string,@Query('calendarId') calendarId?): Promise<DateDto[]> {
+    if (calendarId==null){
+      calendarId=(await this.findEnterpriseByIdUseCase.execute(enterpriseId)).calendarId
+    }
     return await this.listDatesUseCase.execute({ calendarId });
   }
 
@@ -85,18 +91,27 @@ export class CalendarController {
   @Get('date')
   @ApiOperation({ summary: 'Get calendar event details' })
   async getDate(
-    @Query('calendarId') calendarId,
+    @EnterpriseId() enterpriseId,
     @Query('eventId') eventId,
+    @Query('calendarId') calendarId?,
   ): Promise<DateDto> {
+    if (calendarId==null){
+      console.log("using enterpriseID")
+      calendarId=(await this.findEnterpriseByIdUseCase.execute(enterpriseId)).calendarId
+    }
     return await this.getDateUseCase.execute({ calendarId, eventId });
   }
 
   @Version('1')
   @Patch('date')
   @ApiOperation({ summary: 'Update event data' })
-  async update(@Body() dto: DateDto): Promise<DateDto> {
+  async update(@EnterpriseId() enterpriseId,@Body() dto: DateDto): Promise<DateDto> {
+    if (dto.calendarId==null){
+      console.log("using enterpriseID")
+    }
+    let calendarId=dto.calendarId??(await this.findEnterpriseByIdUseCase.execute(enterpriseId)).calendarId!
     const command: UpdateDateCommand = {
-      calendarId: dto.calendarId,
+      calendarId: calendarId,
       eventId: dto.eventId,
       name: dto.name,
       startDatetime: new Date(dto.startDatetime),
@@ -111,9 +126,14 @@ export class CalendarController {
   @Delete('date')
   @ApiOperation({ summary: 'Remove an event' })
   async remove(
-    @Query('calendarId') calendarId: string,
+    @EnterpriseId() enterpriseId,
     @Query('eventId') eventId: string,
+    @Query('calendarId') calendarId?: string,
   ): Promise<void> {
+    if (calendarId==null){
+      console.log("using enterpriseID")
+      calendarId=(await this.findEnterpriseByIdUseCase.execute(enterpriseId)).calendarId!
+    }
     return await this.deleteDateUseCase.execute({ calendarId, eventId });
   }
 

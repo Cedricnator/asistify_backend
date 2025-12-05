@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { SupabaseModule } from '../supabase/supabase.module';
 import { CalendarController } from './controllers/calendar.controller';
 import { CreateCalendarUseCase } from './application/use-cases/create-calendar.use-case';
@@ -14,9 +14,11 @@ import { GOAuthController } from './controllers/oauth.controller';
 import { PaymentsModule } from '../payments/payments.module';
 import { SUSCRIPTION_REPOSITORY } from '../payments/domain/repositories/suscription.repository';
 import { SuscriptionRepositoryAdapter } from '../payments/infrastructure/prisma/suscription.repository.adapter';
+import { EnterpriseModule } from '../enterprise/enterprise.module';
+import { ModuleRef } from '@nestjs/core';
 
 @Module({
-  imports: [SupabaseModule, PaymentsModule],
+  imports: [SupabaseModule, PaymentsModule,forwardRef(() => EnterpriseModule)],
   controllers: [CalendarController, GOAuthController],
   providers: [
     CreateCalendarUseCase,

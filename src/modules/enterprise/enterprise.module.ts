@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { CreateEnterpriseUseCase } from './application/use-cases/enterprise/create-enterprise.use-case';
 import { FindEnterprisesUseCase } from './application/use-cases/enterprise/find-enterprises.use-case';
 import { FindEnterpriseByIdUseCase } from './application/use-cases/enterprise/find-enterprise-by-id.use-case';
@@ -62,11 +62,12 @@ import { CalendarModule } from '../calendar/calendar.module';
       useClass: SuscriptionRepositoryAdapter,
     },
   ],
+  exports:[FindEnterpriseByIdUseCase],
   controllers: [
     EnterpriseController,
     EnterpriseCategoryController,
     EnterpriseProfileController,
   ],
-  imports: [ProfileModule, CalendarModule],
+  imports: [ProfileModule, forwardRef(() => CalendarModule)],
 })
 export class EnterpriseModule {}
