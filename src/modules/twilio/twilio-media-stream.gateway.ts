@@ -15,6 +15,8 @@ import {
   hasAudioSignal,
   mulawToPcm8k,
 } from './audio-utils';
+import { CreateDateUseCase } from '../calendar/application/use-cases/create-date.use-case';
+import { AssistantManager } from '../receptionist/application/assistant/assistant-manager';
 
 /**
  * Twilio Media Streams Gateway
@@ -57,7 +59,11 @@ export class TwilioMediaStreamGateway
   // Duration of the last audio response sent to Twilio (ms)
   private lastResponseDurationMs: Map<any, number> = new Map();
 
-  constructor(private readonly configService: ConfigService) {}
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly createDateUseCase: CreateDateUseCase,
+    private readonly assistantManager: AssistantManager,
+  ) {}
 
   /**
    * Handle new WebSocket connection from Twilio
@@ -167,7 +173,7 @@ export class TwilioMediaStreamGateway
   private async initializeAgent(client: any, streamSid: string) {
     try {
       // Create new VoiceAgent for this call
-      const agent = new VoiceAgent(this.configService);
+      const agent = new VoiceAgent(this.configService, this.createDateUseCase);
 
       // Store the agent session immediately
       this.sessions.set(client, agent);
@@ -235,6 +241,9 @@ export class TwilioMediaStreamGateway
         businessRestrictions: null,
       };
 
+      
+      this.assistantManager.initializeVoiceSession(personality, agent);
+
       // Connect to Gemini with personality
       await agent.connect(personality);
 
@@ -242,7 +251,7 @@ export class TwilioMediaStreamGateway
 
       // Send an initial text message to start the conversation (for debugging)
       try {
-        await agent.sendText('Hola, quiero agendar una hora para mañana por la mañana 11:50am.');
+        await agent.sendText('Hola, quiero agendar una hora para mañana por la mañana 11:50am. Soy Eduardo, duración 1 hora');
         this.logger.log('Sent initial greeting to Gemini');
       } catch (err) {
         this.logger.error(

@@ -38,6 +38,6 @@ import { ModuleRef } from '@nestjs/core';
       useClass:SuscriptionRepositoryAdapter
     }
   ],
-  exports: [ListDatesUseCase, CALENDAR_REPOSITORY],
+  exports: [ListDatesUseCase, CALENDAR_REPOSITORY, CreateDateUseCase],
 })
 export class CalendarModule {}

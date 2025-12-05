@@ -1,7 +1,8 @@
 import { Injectable, Logger, OnModuleInit, Scope } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { GoogleGenAI, Modality } from '@google/genai';
+import { GoogleGenAI, Modality, Type } from '@google/genai';
 import { ReceptionistPersonality } from '../types/receptionist-personality';
+import { CreateDateUseCase } from '../../../../calendar/application/use-cases/create-date.use-case';
 
 /**
  * VoiceAgent - Gemini Live API integration for real-time voice interactions
@@ -29,6 +30,7 @@ export class VoiceAgent implements OnModuleInit {
   private genAI: GoogleGenAI;
   private liveSession: any = null; // Live API session type
   private receptionistId: string;
+  private calendarId?: string;
   private receptionistName: string;
   private personality: {
     formality: number;
@@ -47,7 +49,10 @@ export class VoiceAgent implements OnModuleInit {
   private isConnected = false;
   private audioChunkCount = 0; // Track sent audio chunks
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly createDateUseCase: CreateDateUseCase,
+  ) {
     // Load configuration on construction
     this.modelName =
       this.configService.get<string>('gemini.model') ??
@@ -97,8 +102,9 @@ export class VoiceAgent implements OnModuleInit {
   async initializeSession(
     personality: ReceptionistPersonality,
     receptionistId: string,
+    calendarId?: string,
   ): Promise<VoiceAgent> {
-    this.logger.log(`Initializing Live API session for: ${personality.name}`);
+    this.logger.warn(`Initializing Live API session for: PERSONALITY: ${personality.name}, Receptionist ID: ${receptionistId}, Calendar ID: ${calendarId}`);
 
     if (!this.genAI) {
       throw new Error(
@@ -108,6 +114,7 @@ export class VoiceAgent implements OnModuleInit {
 
     // Store receptionist info in this instance
     this.receptionistId = receptionistId;
+    this.calendarId = calendarId;
     this.receptionistName = personality.name;
     this.personality = {
       formality: personality.levelFormality,
@@ -127,6 +134,8 @@ export class VoiceAgent implements OnModuleInit {
    * Call this after initializeSession() to start the streaming session
    */
   async connect(personality: ReceptionistPersonality): Promise<void> {
+    
+
     if (!this.genAI) {
       throw new Error(
         'Voice agent not initialized. Check your Gemini API key.',
@@ -164,7 +173,27 @@ export class VoiceAgent implements OnModuleInit {
               functionDeclarations: [
                 {
                   name: 'bookAppointment',
-                  description: 'Call this when the user wants to book an appointment.',
+                  description:
+                    'Call this when the user wants to book an appointment. Ask for the client name, date, time, and duration.',
+                  parameters: {
+                    type: Type.OBJECT,
+                    properties: {
+                      clientName: {
+                        type: Type.STRING,
+                        description: 'Name of the client booking the appointment',
+                      },
+                      datetime: {
+                        type: Type.STRING,
+                        description:
+                          'Date and time of the appointment in ISO 8601 format (e.g., 2023-10-27T10:00:00)',
+                      },
+                      duration: {
+                        type: Type.NUMBER,
+                        description: 'Duration of the appointment in minutes',
+                      },
+                    },
+                    required: ['clientName', 'datetime', 'duration'],
+                  },
                 },
               ],
             },
@@ -269,14 +298,59 @@ export class VoiceAgent implements OnModuleInit {
                 for (const call of functionCalls) {
                   if (call.name === 'bookAppointment') {
                     this.logger.log('Executing tool: bookAppointment');
-                    // Print that it has been called as requested
-                    this.logger.log('*** BOOK APPOINTMENT TOOL CALLED ***');
+                    this.logger.log(
+                      `Args: ${JSON.stringify(call.args)}`,
+                    );
 
-                    toolResponses.push({
-                      name: call.name,
-                      response: { result: 'Appointment booking flow started' },
-                      id: call.id,
-                    });
+                    this.logger.log('Calendar ID: ' + this.calendarId);
+                    this.logger.log('Receptionist ID: ' + this.receptionistId);
+
+                    try {
+                      if (!this.calendarId) {
+                        throw new Error(
+                          'Calendar ID not configured for this receptionist.',
+                        );
+                      }
+
+                      const args = call.args as any;
+                      const start = new Date(args.datetime);
+                      const duration = args.duration || 30; // default 30 mins
+                      const end = new Date(start.getTime() + duration * 60000);
+
+                      this.logger.log(
+                        `Creating event: ${args.clientName} at ${start.toISOString()} for ${duration} mins`,
+                      );
+
+                      const event = await this.createDateUseCase.execute({
+                        calendarId: this.calendarId,
+                        name: `Cita: ${args.clientName}`,
+                        startDatetime: start,
+                        endDatetime: end,
+                        timezone: 'America/Santiago', // Default or fetch from config
+                      });
+
+                      this.logger.log(`Event created: ${event.eventId}`);
+
+                      toolResponses.push({
+                        name: call.name,
+                        response: {
+                          result: 'success',
+                          message: `Appointment booked for ${args.clientName} at ${start.toLocaleString()}`,
+                          eventId: event.eventId,
+                        },
+                        id: call.id,
+                      });
+                    } catch (error) {
+                      this.logger.error(`Error booking appointment: ${error}`);
+                      toolResponses.push({
+                        name: call.name,
+                        response: {
+                          result: 'error',
+                          message: `Failed to book appointment: ${error.message}`,
+                        },
+                        id: call.id,
+                      });
+                    }
                   }
                 }
 

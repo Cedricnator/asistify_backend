@@ -23,9 +23,11 @@ import { FindAllReceptionistsUseCase } from './application/use-cases/recepcionis
 import { FindReceptionistByIdUseCase } from './application/use-cases/recepcionist/find-receptionist-by-id.use-case';
 import { UpdateReceptionistUseCase } from './application/use-cases/recepcionist/update-receptionist.use-case';
 import { CountReceptionistUseCase } from './application/use-cases/recepcionist/count-receptionist.use-case';
+import { CalendarModule } from '../calendar/calendar.module';
+import { EnterpriseModule } from '../enterprise/enterprise.module';
 
 @Module({
-  imports: [],
+  imports: [CalendarModule, EnterpriseModule],
   providers: [
     VoiceAgent,
     AssistantManager,
