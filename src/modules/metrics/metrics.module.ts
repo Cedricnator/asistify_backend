@@ -6,7 +6,6 @@ import { MetricsController } from './infrastructure/controllers/metrics.controll
 import { CALL_HISTORY } from './domain/ports/out/call-history.port';
 import { PrismaCallHistoryAdapter } from './infrastructure/adapters/prisma.call-history.adapter';
 import { SaveCallHistoryUseCase } from './application/use-cases/save-call-history.use-case';
-import { OVERVIEW_DATA_PORT } from './domain/ports/out/overview-data.port';
 import { LocalOverviewDataAdapter } from './infrastructure/adapters/local.overview-data.adapter';
 import { DocumentModule } from '../document/document.module';
 import { GoogleCalendarMetricsAdapter } from './infrastructure/adapters/google.calendar-metrics.adapter';

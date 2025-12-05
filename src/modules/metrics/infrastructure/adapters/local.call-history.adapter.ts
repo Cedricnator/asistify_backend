@@ -17,4 +17,7 @@ export class LocalCallHistoryAdapter implements CallHistoryPort {
     ];
     return history;
   }
+  async save(callHistory: CallHistory) {
+    // No operation needed for local adapter
+  }
 }
