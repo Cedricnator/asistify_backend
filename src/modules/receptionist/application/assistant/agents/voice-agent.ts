@@ -155,10 +155,20 @@ export class VoiceAgent implements OnModuleInit {
           speechConfig: {
             voiceConfig: {
               prebuiltVoiceConfig: {
-                voiceName: 'Kore', // Professional female voice
+                voiceName: 'Aoede', // Professional female voice
               },
             },
           },
+          tools: [
+            {
+              functionDeclarations: [
+                {
+                  name: 'bookAppointment',
+                  description: 'Call this when the user wants to book an appointment.',
+                },
+              ],
+            },
+          ],
         },
         callbacks: {
           // Handle connection open
@@ -251,6 +261,44 @@ export class VoiceAgent implements OnModuleInit {
               this.logger.log(
                 `Tool call received: ${JSON.stringify(response.toolCall)}`,
               );
+
+              const functionCalls = response.toolCall.functionCalls;
+              if (functionCalls && functionCalls.length > 0) {
+                const toolResponses: any[] = [];
+
+                for (const call of functionCalls) {
+                  if (call.name === 'bookAppointment') {
+                    this.logger.log('Executing tool: bookAppointment');
+                    // Print that it has been called as requested
+                    this.logger.log('*** BOOK APPOINTMENT TOOL CALLED ***');
+
+                    toolResponses.push({
+                      name: call.name,
+                      response: { result: 'Appointment booking flow started' },
+                      id: call.id,
+                    });
+                  }
+                }
+
+                // Send response back to the model to continue the conversation
+                if (toolResponses.length > 0) {
+                  this.liveSession.sendClientContent({
+                    turns: [
+                      {
+                        role: 'user',
+                        parts: toolResponses.map((tr) => ({
+                          functionResponse: {
+                            name: tr.name,
+                            response: tr.response,
+                            id: tr.id,
+                          },
+                        })),
+                      },
+                    ],
+                    turnComplete: true,
+                  });
+                }
+              }
             }
 
             // Handle usage metadata
@@ -514,30 +562,35 @@ export class VoiceAgent implements OnModuleInit {
       personality.levelDynamism,
     );
 
-    let instruction = `You are ${personality.name}, you must repeat back what the message I send you.
-        if you cannot understand the message, respond with "I am sorry, I did not understand that. Could you please repeat?".
+    let instruction = `Eres ${personality.name}, debes repetir lo que te envíe en el mensaje.
+        si no puedes entender el mensaje, responde con "Lo siento, no entendí eso. ¿Podrías repetirlo por favor?".
 
-**Personality:**
-- Formality Level: ${formalityLevel} (${personality.levelFormality}/10)
-- Dynamism Level: ${dynamismLevel} (${personality.levelDynamism}/10)
+**Personalidad:**
+- Nivel de Formalidad: ${formalityLevel} (${personality.levelFormality}/10)
+- Nivel de Dinamismo: ${dynamismLevel} (${personality.levelDynamism}/10)
 
-**Your Role:**
-You help clients with inquiries, appointments, and general information about the business.
+**IDIOMA Y ACENTO:**
+- Usa una entonación natural
+- Eres nativo del español
+- Tienes un acento hispanohablante
+
+**Tu Rol:**
+Ayudas a los clientes con consultas, citas e información general sobre el negocio.
 `;
 
     if (personality.enterpriseInformation) {
-      instruction += `\n**Business Information:**\n${personality.enterpriseInformation}\n`;
+      instruction += `\n**Información del Negocio:**\n${personality.enterpriseInformation}\n`;
     }
 
     if (personality.clientInformation) {
-      instruction += `\n**Client Handling Guidelines:**\n${personality.clientInformation}\n`;
+      instruction += `\n**Pautas de Manejo de Clientes:**\n${personality.clientInformation}\n`;
     }
 
     if (personality.businessRestrictions) {
-      instruction += `\n**Important Restrictions:**\n${personality.businessRestrictions}\n`;
+      instruction += `\n**Restricciones Importantes:**\n${personality.businessRestrictions}\n`;
     }
 
-    instruction += `\nAlways maintain your personality traits while being helpful and professional.`;
+    instruction += `\nMantén siempre tus rasgos de personalidad mientras eres útil y profesional.`;
 
     return instruction;
   }
@@ -546,22 +599,22 @@ You help clients with inquiries, appointments, and general information about the
    * Map formality level (1-10) to descriptive text
    */
   private getFormalityDescription(level: number): string {
-    if (level <= 3) return 'Very casual and friendly';
-    if (level <= 5) return 'Conversational and approachable';
-    if (level <= 7) return 'Professional yet warm';
-    if (level <= 9) return 'Formal and polished';
-    return 'Highly formal and ceremonious';
+    if (level <= 3) return 'Muy casual y amigable';
+    if (level <= 5) return 'Conversacional y accesible';
+    if (level <= 7) return 'Profesional pero cálido';
+    if (level <= 9) return 'Formal y pulido';
+    return 'Altamente formal y ceremonioso';
   }
 
   /**
    * Map dynamism level (1-10) to descriptive text
    */
   private getDynamismDescription(level: number): string {
-    if (level <= 3) return 'Calm and measured';
-    if (level <= 5) return 'Balanced energy';
-    if (level <= 7) return 'Energetic and engaging';
-    if (level <= 9) return 'Very enthusiastic';
-    return 'Highly dynamic and animated';
+    if (level <= 3) return 'Calmado y mesurado';
+    if (level <= 5) return 'Energía equilibrada';
+    if (level <= 7) return 'Energético y atractivo';
+    if (level <= 9) return 'Muy entusiasta';
+    return 'Altamente dinámico y animado';
   }
 
   /**

@@ -218,7 +218,7 @@ export class TwilioMediaStreamGateway
           await new Promise((resolve) => setTimeout(resolve, totalWaitMs));
 
           this.lastNonSilentAt.set(client, Date.now());
-          this.sendingBlocked.set(client, false);
+          // this.sendingBlocked.set(client, false);
           this.logger.log(
             'Re-enabled sending audio to Gemini after response playback',
           );
@@ -242,7 +242,7 @@ export class TwilioMediaStreamGateway
 
       // Send an initial text message to start the conversation (for debugging)
       try {
-        await agent.sendText('Hola, quiero agendar una hora.');
+        await agent.sendText('Hola, quiero agendar una hora para mañana por la mañana 11:50am.');
         this.logger.log('Sent initial greeting to Gemini');
       } catch (err) {
         this.logger.error(
@@ -250,6 +250,8 @@ export class TwilioMediaStreamGateway
           err?.message || err,
         );
       }
+
+      this.sendingBlocked.set(client, true);
 
       // Wait a moment for Gemini to fully initialize
       await new Promise((resolve) => setTimeout(resolve, 500));
