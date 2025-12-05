@@ -56,29 +56,52 @@ jobs:
         run: |
           echo "IMAGE_NAME_LOWER=$(echo ${{ env.IMAGE_NAME }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
 
+      - name: Copy deploy script to VM
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          source: 'scripts/deploy.sh'
+          target: '~/deploy-scripts'
+
       - name: Deploy to VM via SSH
         uses: appleboy/ssh-action@v1.0.3
         env:
           # Variables de entorno aplicación
           PORT: ${{ secrets.PORT }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          # SUPABASE
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           SUPABASE_AUTH_JWT_SECRET: ${{ secrets.SUPABASE_AUTH_JWT_SECRET }}
+          # GEMINI
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_MODEL: ${{ secrets.GEMINI_MODEL }}
+          # TWILIO
           TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
           TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
           TWILIO_API_KEY_SID: ${{ secrets.TWILIO_API_KEY_SID }}
           TWILIO_API_KEY_SECRET: ${{ secrets.TWILIO_API_KEY_SECRET }}
           TWILIO_TWIML_APP_SID: ${{ secrets.TWILIO_TWIML_APP_SID }}
+          # GOOGLE CLIENT
           GCLIENT_ID: ${{ secrets.GCLIENT_ID }}
           GCLIENT_SECRET: ${{ secrets.GCLIENT_SECRET }}
+          GREFRESH_TOKEN: ${{ secrets.GREFRESH_TOKEN }}
+          GACCESS_TOKEN: ${{ secrets.GACCESS_TOKEN }}
+          # MINIO
+          MINIO_ENDPOINT: ${{ secrets.MINIO_ENDPOINT }}
+          MINIO_PORT: ${{ secrets.MINIO_PORT }}
           MINIO_ACCESS_KEY: ${{ secrets.MINIO_ACCESS_KEY }}
           MINIO_SECRET_KEY: ${{ secrets.MINIO_SECRET_KEY }}
           MINIO_BUCKET_NAME: ${{ secrets.MINIO_BUCKET_NAME }}
+          # FLOW
           FLOW_RETURN_URL: ${{ secrets.FLOW_RETURN_URL }}
+          FLOW_API_KEY: ${{ secrets.FLOW_API_KEY }}
+          FLOW_SECRET: ${{ secrets.FLOW_SECRET }}
 
           # Credenciales para GHCR y despliegue
           GITHUB_USERNAME: ${{ github.actor }}
@@ -89,5 +112,36 @@ jobs:
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_KEY }}
           port: ${{ secrets.SSH_PORT }}
-          envs: PORT,DATABASE_URL,SUPABASE_URL,SUPABASE_ANON_KEY,SUPABASE_SERVICE_ROLE_KEY,SUPABASE_AUTH_JWT_SECRET,GEMINI_API_KEY,GEMINI_MODEL,TWILIO_ACCOUNT_SID,TWILIO_AUTH_TOKEN,TWILIO_API_KEY_SID,TWILIO_API_KEY_SECRET,TWILIO_TWIML_APP_SID,GCLIENT_ID,GCLIENT_SECRET,MINIO_ACCESS_KEY,MINIO_SECRET_KEY,MINIO_BUCKET_NAME,FLOW_RETURN_URL,GITHUB_USERNAME,GITHUB_TOKEN,IMAGE_TAG
-          script_path: scripts/deploy.sh
+          envs: >-
+            PORT,
+            SSH_HOST,
+            DATABASE_URL,
+            SUPABASE_URL,
+            SUPABASE_ANON_KEY,
+            SUPABASE_SERVICE_ROLE_KEY,
+            SUPABASE_AUTH_JWT_SECRET,
+            GEMINI_API_KEY,
+            GEMINI_MODEL,
+            TWILIO_ACCOUNT_SID,
+            TWILIO_AUTH_TOKEN,
+            TWILIO_API_KEY_SID,
+            TWILIO_API_KEY_SECRET,
+            TWILIO_TWIML_APP_SID,
+            GCLIENT_ID,
+            GCLIENT_SECRET,
+            GREFRESH_TOKEN,
+            GACCESS_TOKEN,
+            MINIO_ENDPOINT,
+            MINIO_PORT,
+            MINIO_ACCESS_KEY,
+            MINIO_SECRET_KEY,
+            MINIO_BUCKET_NAME,
+            FLOW_RETURN_URL,
+            FLOW_API_KEY,
+            FLOW_SECRET,
+            GITHUB_USERNAME,
+            GITHUB_TOKEN,
+            IMAGE_TAG
+          script: |
+            chmod +x ~/deploy-scripts/scripts/deploy.sh
+            ~/deploy-scripts/scripts/deploy.sh
