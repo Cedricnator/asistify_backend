@@ -44,8 +44,8 @@ export class MembershipRepositoryAdapter implements MembershipRepository {
     );
   }
 
-  deleteMembership(id: string): Promise<MembershipEntity> {
-    return this.prisma.membership.delete({
+  async deleteMembership(id: string): Promise<void> {
+    await this.prisma.membership.delete({
       where: {
         id: id,
       },
