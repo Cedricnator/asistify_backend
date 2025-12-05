@@ -10,6 +10,7 @@ import {
   Patch,
   Post,
   Query,
+  UseGuards,
   Version,
 } from '@nestjs/common';
 import { PaginatedResponseDto } from 'src/common/dtos/paginated-response.dto';
@@ -23,6 +24,7 @@ import { FindAllReceptionistsUseCase } from '../../application/use-cases/recepci
 import { FindReceptionistByIdUseCase } from '../../application/use-cases/recepcionist/find-receptionist-by-id.use-case';
 import { UpdateReceptionistUseCase } from '../../application/use-cases/recepcionist/update-receptionist.use-case';
 import { EnterpriseId } from 'src/modules/auth/infrastructure/decorators/enterprise-id.decorator';
+import { RequiresSuscriptionGuard } from 'src/modules/payments/infrastructure/middleware/requires-suscription.guard';
 
 @Controller('receptionists')
 export class ReceptionistController {
@@ -36,6 +38,7 @@ export class ReceptionistController {
 
   @Version('1')
   @Post()
+  @UseGuards(RequiresSuscriptionGuard)
   @HttpCode(201)
   async create(
     @Body() dto: CreateReceptionistDto,

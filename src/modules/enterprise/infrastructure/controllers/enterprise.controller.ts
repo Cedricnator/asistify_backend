@@ -8,6 +8,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  UseGuards,
   Version,
 } from '@nestjs/common';
 import { CreateEnterpriseUseCase } from '../../application/use-cases/enterprise/create-enterprise.use-case';
@@ -18,6 +19,7 @@ import { CreateEnterpriseDto } from '../dtos/create-enterprise.dto';
 import { UpdateEnterpriseDto } from '../dtos/update-enterprise.dto';
 import { EnterpriseEntity } from '../../domain/entities/enterprise.entity';
 import { Public } from '../../../auth/infrastructure/decorators/public.decorator';
+import { RequiresSuscriptionGuard } from 'src/modules/payments/infrastructure/middleware/requires-suscription.guard';
 
 @Controller('enterprises')
 export class EnterpriseController {
@@ -47,6 +49,7 @@ export class EnterpriseController {
 
   @Version('1')
   @Patch(':id')
+  @UseGuards(RequiresSuscriptionGuard)
   @HttpCode(200)
   async update(
     @Param('id', ParseUUIDPipe) id: string,

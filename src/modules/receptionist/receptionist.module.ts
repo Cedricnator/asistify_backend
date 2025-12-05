@@ -23,9 +23,12 @@ import { FindAllReceptionistsUseCase } from './application/use-cases/recepcionis
 import { FindReceptionistByIdUseCase } from './application/use-cases/recepcionist/find-receptionist-by-id.use-case';
 import { UpdateReceptionistUseCase } from './application/use-cases/recepcionist/update-receptionist.use-case';
 import { CountReceptionistUseCase } from './application/use-cases/recepcionist/count-receptionist.use-case';
+import { PaymentsModule } from '../payments/payments.module';
+import { SUSCRIPTION_REPOSITORY } from '../payments/domain/repositories/suscription.repository';
+import { SuscriptionRepositoryAdapter } from '../payments/infrastructure/prisma/suscription.repository.adapter';
 
 @Module({
-  imports: [],
+  imports: [PaymentsModule],
   providers: [
     VoiceAgent,
     AssistantManager,
@@ -59,6 +62,10 @@ import { CountReceptionistUseCase } from './application/use-cases/recepcionist/c
       provide: METRIC_REPOSITORY,
       useClass: ReceptionistPrismaRepository,
     },
+    {
+      provide:SUSCRIPTION_REPOSITORY,
+      useClass:SuscriptionRepositoryAdapter
+    }
   ],
   controllers: [ReceptionistController, AvatarController, MetricController],
   exports: [
