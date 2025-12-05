@@ -1,7 +1,9 @@
 import { Injectable, Logger, OnModuleInit, Scope } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { GoogleGenAI, Modality } from '@google/genai';
+import { GoogleGenAI, Modality, Type } from '@google/genai';
 import { ReceptionistPersonality } from '../types/receptionist-personality';
+import { CreateDateUseCase } from '../../../../calendar/application/use-cases/create-date.use-case';
+import { RetrivalService } from '../../../../chunks/application/services/retrival.service';
 
 /**
  * VoiceAgent - Gemini Live API integration for real-time voice interactions
@@ -29,11 +31,9 @@ export class VoiceAgent implements OnModuleInit {
   private genAI: GoogleGenAI;
   private liveSession: any = null; // Live API session type
   private receptionistId: string;
+  private calendarId?: string;
   private receptionistName: string;
-  private personality: {
-    formality: number;
-    dynamism: number;
-  };
+  private personality: ReceptionistPersonality;
   private readonly modelName: string;
   private readonly config: {
     temperature: number;
@@ -47,7 +47,11 @@ export class VoiceAgent implements OnModuleInit {
   private isConnected = false;
   private audioChunkCount = 0; // Track sent audio chunks
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly createDateUseCase: CreateDateUseCase,
+    private readonly retrivalService: RetrivalService,
+  ) {
     // Load configuration on construction
     this.modelName =
       this.configService.get<string>('gemini.model') ??
@@ -97,8 +101,11 @@ export class VoiceAgent implements OnModuleInit {
   async initializeSession(
     personality: ReceptionistPersonality,
     receptionistId: string,
+    calendarId?: string,
   ): Promise<VoiceAgent> {
-    this.logger.log(`Initializing Live API session for: ${personality.name}`);
+    this.logger.warn(
+      `Initializing Live API session for: PERSONALITY: ${personality.name}, Receptionist ID: ${receptionistId}, Calendar ID: ${calendarId}`,
+    );
 
     if (!this.genAI) {
       throw new Error(
@@ -108,11 +115,9 @@ export class VoiceAgent implements OnModuleInit {
 
     // Store receptionist info in this instance
     this.receptionistId = receptionistId;
+    this.calendarId = calendarId;
     this.receptionistName = personality.name;
-    this.personality = {
-      formality: personality.levelFormality,
-      dynamism: personality.levelDynamism,
-    };
+    this.personality = personality;
 
     this.logger.log(
       `Session initialized for ${personality.name} - Formality: ${personality.levelFormality}/10, Dynamism: ${personality.levelDynamism}/10`,
@@ -126,7 +131,7 @@ export class VoiceAgent implements OnModuleInit {
    * Connect to Gemini Live API via WebSocket
    * Call this after initializeSession() to start the streaming session
    */
-  async connect(personality: ReceptionistPersonality): Promise<void> {
+  async connect(): Promise<void> {
     if (!this.genAI) {
       throw new Error(
         'Voice agent not initialized. Check your Gemini API key.',
@@ -140,7 +145,9 @@ export class VoiceAgent implements OnModuleInit {
 
     try {
       // Build system instruction based on personality
-      const systemInstruction = this.buildSystemInstruction(personality);
+      const systemInstruction = this.buildSystemInstruction(this.personality);
+
+      this.logger.log(`System instruction built: ${systemInstruction}`);
 
       // Create Live API session with audio response modality
       this.liveSession = await this.genAI.live.connect({
@@ -155,10 +162,58 @@ export class VoiceAgent implements OnModuleInit {
           speechConfig: {
             voiceConfig: {
               prebuiltVoiceConfig: {
-                voiceName: 'Kore', // Professional female voice
+                // Opciones: 'Puck', 'Charon', 'Kore', 'Fenrir', 'Aoede'
+                voiceName: 'Aoede', // Optimistic voice - works better for Spanish
               },
             },
           },
+          tools: [
+            {
+              functionDeclarations: [
+                {
+                  name: 'bookAppointment',
+                  description:
+                    'Call this when the user wants to book an appointment. Ask for the client name, date, time, and duration.',
+                  parameters: {
+                    type: Type.OBJECT,
+                    properties: {
+                      clientName: {
+                        type: Type.STRING,
+                        description:
+                          'Name of the client booking the appointment',
+                      },
+                      datetime: {
+                        type: Type.STRING,
+                        description:
+                          'Date and time of the appointment in ISO 8601 format (e.g., 2025-10-27T10:00:00)',
+                      },
+                      duration: {
+                        type: Type.NUMBER,
+                        description: 'Duration of the appointment in minutes',
+                      },
+                    },
+                    required: ['clientName', 'datetime', 'duration'],
+                  },
+                },
+                {
+                  name: 'searchKnowledge',
+                  description:
+                    'Search the company knowledge base (RAG) for specific information about the business, products, services, policies, or procedures. Use this when the user asks detailed questions about the company that are not covered in your general instructions.',
+                  parameters: {
+                    type: Type.OBJECT,
+                    properties: {
+                      query: {
+                        type: Type.STRING,
+                        description:
+                          'The search query to find relevant information in the knowledge base. Be specific and clear.',
+                      },
+                    },
+                    required: ['query'],
+                  },
+                },
+              ],
+            },
+          ],
         },
         callbacks: {
           // Handle connection open
@@ -174,7 +229,20 @@ export class VoiceAgent implements OnModuleInit {
 
             // Handle setup complete
             if (response.setupComplete) {
-              this.logger.log('Live API setup complete');
+              this.logger.log(
+                'Live API setup complete - Sending Spanish priming message',
+              );
+              // CRITICAL: Send immediate Spanish message to force Spanish accent/language
+              // This is a workaround for Gemini Live API language detection issues
+              this.liveSession.sendClientContent({
+                turns: [
+                  {
+                    role: 'user',
+                    parts: [{ text: '¡Hola! Habla en español por favor.' }],
+                  },
+                ],
+                turnComplete: true,
+              });
               return;
             }
 
@@ -215,7 +283,6 @@ export class VoiceAgent implements OnModuleInit {
               try {
                 this.generationCompleteCallbacks.forEach(async (cb) => {
                   try {
-                    await new Promise((resolve) => setTimeout(resolve, 4000));
                     cb();
                   } catch (e) {
                     this.logger.error(
@@ -251,6 +318,154 @@ export class VoiceAgent implements OnModuleInit {
               this.logger.log(
                 `Tool call received: ${JSON.stringify(response.toolCall)}`,
               );
+
+              const functionCalls = response.toolCall.functionCalls;
+              if (functionCalls && functionCalls.length > 0) {
+                const toolResponses: any[] = [];
+
+                for (const call of functionCalls) {
+                  if (call.name === 'bookAppointment') {
+                    this.logger.log('Executing tool: bookAppointment');
+                    this.logger.log(`Args: ${JSON.stringify(call.args)}`);
+
+                    this.logger.log('Calendar ID: ' + this.calendarId);
+                    this.logger.log('Receptionist ID: ' + this.receptionistId);
+
+                    try {
+                      if (!this.calendarId) {
+                        throw new Error(
+                          'Calendar ID not configured for this receptionist.',
+                        );
+                      }
+
+                      const args = call.args as any;
+                      // Append Z to treat as UTC, preventing server timezone shift
+                      const start = new Date(
+                        args.datetime.endsWith('Z')
+                          ? args.datetime
+                          : `${args.datetime}Z`,
+                      );
+                      const duration = args.duration || 30; // default 30 mins
+                      const end = new Date(start.getTime() + duration * 60000);
+
+                      this.logger.log(
+                        `Creating event: ${args.clientName} at ${start.toISOString()} for ${duration} mins`,
+                      );
+
+                      const event = await this.createDateUseCase.execute({
+                        calendarId: this.calendarId,
+                        name: `Cita: ${args.clientName}`,
+                        startDatetime: start,
+                        endDatetime: end,
+                        timezone: 'America/Santiago', // Default or fetch from config
+                      });
+
+                      this.logger.log(`Event created: ${event.eventId}`);
+
+                      toolResponses.push({
+                        name: call.name,
+                        response: {
+                          result: 'success',
+                          message: `Appointment booked for ${args.clientName} at ${start.toLocaleString()}`,
+                          eventId: event.eventId,
+                          // eventId: 'mock-event-id',
+                        },
+                        id: call.id,
+                      });
+                    } catch (error) {
+                      this.logger.error(`Error booking appointment: ${error}`);
+                      toolResponses.push({
+                        name: call.name,
+                        response: {
+                          result: 'error',
+                          message: `Failed to book appointment: ${error.message}`,
+                        },
+                        id: call.id,
+                      });
+                    }
+                  } else if (call.name === 'searchKnowledge') {
+                    this.logger.log('Executing tool: searchKnowledge');
+                    this.logger.log(`Args: ${JSON.stringify(call.args)}`);
+
+                    try {
+                      const args = call.args as any;
+                      const query = args.query;
+
+                      if (!query || query.trim() === '') {
+                        throw new Error('Query cannot be empty');
+                      }
+
+                      // Get enterprise ID from receptionist (assuming it's available)
+                      // If documents are filtered by enterprise, you may need to pass enterpriseId
+                      const retrievalResult =
+                        await this.retrivalService.retrieve({
+                          query,
+                          matchThreshold: 0.7,
+                          matchCount: 5,
+                          useQueryRewrite: false,
+                        });
+
+                      if (retrievalResult.chunks.length === 0) {
+                        // No information found in RAG
+                        toolResponses.push({
+                          name: call.name,
+                          response: {
+                            result: 'not_found',
+                            message:
+                              'No tengo esa información en mi base de conocimiento.',
+                          },
+                          id: call.id,
+                        });
+                      } else {
+                        // Build context from chunks
+                        const context = retrievalResult.chunks
+                          .map((chunk) => chunk.content)
+                          .join('\n\n');
+
+                        this.logger.log(
+                          `Found ${retrievalResult.chunks.length} relevant chunks for query: "${query}"`,
+                        );
+
+                        toolResponses.push({
+                          name: call.name,
+                          response: {
+                            result: 'success',
+                            information: context,
+                            totalResults: retrievalResult.totalResults,
+                          },
+                          id: call.id,
+                        });
+                      }
+                    } catch (error) {
+                      this.logger.error(
+                        `Error searching knowledge base: ${error.message}`,
+                        error.stack,
+                      );
+                      // Return "I don't know" response on error
+                      toolResponses.push({
+                        name: call.name,
+                        response: {
+                          result: 'error',
+                          message:
+                            'No tengo esa información en mi base de conocimiento.',
+                        },
+                        id: call.id,
+                      });
+                    }
+                  }
+                }
+
+                // Send response back to the model to continue the conversation
+                if (toolResponses.length > 0) {
+                  this.liveSession.sendToolResponse({
+                    functionResponses: toolResponses.map((tr) => ({
+                      name: tr.name,
+                      response: tr.response,
+                      id: tr.id,
+                    })),
+                  });
+                }
+              }
             }
 
             // Handle usage metadata
@@ -339,9 +554,9 @@ export class VoiceAgent implements OnModuleInit {
         const preview = decoded
           .slice(0, Math.min(8, decoded.length))
           .toString('hex');
-        this.logger.debug(
-          `sendAudio -> mimeType=${mimeType} bytes=${decoded.length} preview=${preview}`,
-        );
+        // this.logger.debug(
+        //   `sendAudio -> mimeType=${mimeType} bytes=${decoded.length} preview=${preview}`,
+        // );
       } catch (err) {
         this.logger.debug(
           'sendAudio -> could not decode preview for logging',
@@ -514,30 +729,172 @@ export class VoiceAgent implements OnModuleInit {
       personality.levelDynamism,
     );
 
-    let instruction = `You are ${personality.name}, you must repeat back what the message I send you.
-        if you cannot understand the message, respond with "I am sorry, I did not understand that. Could you please repeat?".
+    // Generate specific style guidelines based on levels
+    let styleGuide = '';
 
-**Personality:**
-- Formality Level: ${formalityLevel} (${personality.levelFormality}/10)
-- Dynamism Level: ${dynamismLevel} (${personality.levelDynamism}/10)
+    // Formality Logic
+    if (personality.levelFormality <= 1) {
+      styleGuide += '- Tira bromas en cada una de tus frases\n';
+      styleGuide +=
+        '- Habla como si fueras un amigo cercano, usando jerga y modismos chilenos.\n';
+      styleGuide += '- Puedes reír.\n';
+    } else if (personality.levelFormality <= 4) {
+      styleGuide +=
+        "- Trata al usuario de 'tú'. Usa un lenguaje cercano, coloquial y amigable.\n";
+      styleGuide += '- Puedes usar expresiones informales pero respetuosas.\n';
+    } else if (personality.levelFormality <= 7) {
+      styleGuide +=
+        "- Trata al usuario de 'usted' por defecto, pero sé cercano.\n";
+      styleGuide += '- Mantén un equilibrio entre profesionalismo y calidez.\n';
+    } else {
+      styleGuide += "- Trata al usuario estrictamente de 'usted'.\n";
+      styleGuide += '- Usa un vocabulario elegante, preciso y muy cortés.\n';
+    }
 
-**Your Role:**
-You help clients with inquiries, appointments, and general information about the business.
+    // Dynamism Logic
+    if (personality.levelDynamism <= 4) {
+      styleGuide +=
+        '- Mantén un tono calmado, pausado y sereno. Transmite paz.\n';
+      styleGuide += '- Evita exclamaciones excesivas o hablar muy rápido.\n';
+    } else if (personality.levelDynamism <= 7) {
+      styleGuide +=
+        '- Muestra interés y energía positiva, pero sin exagerar.\n';
+      styleGuide += '- Tu ritmo debe ser fluido y activo.\n';
+    } else {
+      styleGuide +=
+        '- ¡Sé muy entusiasta y enérgico! Transmite mucha emoción.\n';
+      styleGuide +=
+        '- Usa un ritmo rápido y dinámico. ¡Que se note tu energía!\n';
+    }
+
+    const date = new Date().toLocaleString('es-ES', {
+      timeZone: 'America/Santiago',
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: 'numeric',
+    });
+    const currentYear = new Date().getFullYear();
+
+    this.logger.log(
+      `Building system instruction for ${personality.name} on ${date}`,
+    );
+
+    let instruction = `
+    !!! INSTRUCCIÓN CRÍTICA DE IDIOMA Y VOZ !!!
+    TU IDIOMA PRINCIPAL Y ÚNICO ES EL ESPAÑOL.
+    - Debes hablar SIEMPRE en español latinoamericano (Chile/región Andina).
+    - Usa un ACENTO NATIVO ESPAÑOL, con pronunciación clara y natural de hablante nativo chileno.
+    - NUNCA generes texto en inglés, ni siquiera frases cortas como "Hello" o "Okay". Usa "Hola" o "Entendido".
+    - Tu ENTONACIÓN debe ser la de un hispanohablante nativo, no traducción desde inglés.
+    - Ejemplos de cómo debes hablar: "¡Buenos días! ¿En qué puedo ayudarle?", "Perfecto, déjeme agendar eso para usted", "¿Me podría confirmar su nombre, por favor?"
+    
+    Eres ${personality.name}, un recepcionista profesional chileno.
+    
+    IMPORTANTE: Habla con acento español natural desde tu primera palabra. No uses acento inglés.
+
+**Personalidad:**
+- Nivel de Formalidad: ${formalityLevel} (${personality.levelFormality}/10)
+- Nivel de Dinamismo: ${dynamismLevel} (${personality.levelDynamism}/10)
+
+**GUÍA DE ESTILO Y TONO (CRÍTICO):**
+${styleGuide}
+
+**IDIOMA, ACENTO Y ESTILO DE VOZ:**
+- Habla con ACENTO ESPAÑOL LATINOAMERICANO (Chilean Spanish). 
+- Pronunciación: Clara, natural, como un chileno nativo.
+- Entonación: Auténtica, no robótica ni traducida del inglés.
+- Ritmo: Natural y conversacional en español.
+- Sé conciso. Respuestas cortas son mejores para voz.
+
+**Tu Rol:**
+Gestionar citas y consultas. Tu objetivo principal es agendar citas correctamente usando la herramienta \`bookAppointment\`.
+
+**HERRAMIENTAS DISPONIBLES:**
+1. **bookAppointment**: Agendar citas para clientes.
+2. **searchKnowledge**: Buscar información específica sobre la empresa en la base de conocimientos.
+   - Úsala cuando el usuario pregunte por: productos, servicios, políticas, procedimientos, precios, horarios, ubicaciones, etc.
+   - Si la herramienta devuelve "not_found" o "error", responde: "Disculpe, no tengo esa información disponible en este momento."
+   - NUNCA inventes información que no esté en la base de conocimientos o en tus instrucciones generales.
+
+**Fecha Actual:** ${date}
+**Año Actual:** ${currentYear}
+
+**REGLAS DE RAZONAMIENTO:**
+Antes de responder o llamar a una herramienta, PIENSA PASO A PASO en silencio:
+NUNCA debes pensar en voz alta ni compartir tu razonamiento con el usuario. Solo piensa internamente.
+1. **Analizar Intención:** ¿El usuario quiere agendar, cancelar o solo preguntar?
+2. **Verificar Datos:** Si quiere agendar, ¿tengo Nombre, Fecha/Hora y Duración?
+3. **Validar Fecha:**
+   - ¿La fecha es en el pasado? (Rechazar).
+   - ¿El año es anterior a ${currentYear}? (Corregir al usuario).
+   - Si dice "lunes", calcula la fecha exacta basada en la **Fecha Actual**.
+4. **Decisión:**
+   - Si falta información -> Pregunta por el dato faltante.
+   - Si la fecha es errónea -> Aclara el error.
+   - Debes SIEMPRE confirmar con el usuario antes de agendar.
+   - Si todo está bien -> Llama a \`bookAppointment\`.
+
+**EJEMPLOS DE INTERACCIÓN:**
+
+**Ejemplo 1: Flujo Ideal**
+Usuario: "Hola, quiero agendar una cita."
+Asistente (Pensamiento): "Intención: Agendar. Faltan datos: Nombre, Fecha, Duración."
+Asistente: "Claro, ¿me podría dar su nombre y para cuándo le gustaría la cita?"
+Usuario: "Soy Carlos, para mañana a las 3 de la tarde por media hora."
+Asistente (Pensamiento): "Datos: Carlos, Mañana 3pm, 30 min. Fecha válida. Procedo."
+Asistente: (Llama a tool bookAppointment) "Listo Carlos, agendando para mañana a las 3pm."
+
+**Ejemplo 2: Validación de Año**
+Usuario: "Quiero cita para el 10 de octubre de 2023."
+Asistente (Pensamiento): "Año solicitado: 2023. Año actual: ${currentYear}. Es pasado."
+Asistente: "Disculpe, el año 2023 ya pasó. ¿Se refiere a este año o al próximo?"
+
+**Ejemplo 3: Datos Faltantes**
+Usuario: "Necesito una cita para el viernes."
+Asistente (Pensamiento): "Falta hora, duración y nombre. Preguntaré lo más importante primero."
+Asistente: "¿A qué hora le gustaría el viernes y cuál es su nombre?"
+
+**Ejemplo 4: Ambigüedad**
+Usuario: "Resérvame."
+Asistente (Pensamiento): "Intención clara, pero faltan todos los detalles."
+Asistente: "Con gusto. ¿Para qué día y hora, y a nombre de quién?"
+
+**Ejemplo 5: Confirmación Implícita**
+Usuario: "Soy Ana, el martes a las 10am, una hora."
+Asistente (Pensamiento): "Tengo todo. Ana, Martes próximo 10am, 60 min. Validando fecha... Correcto."
+Asistente: (Llama a tool bookAppointment) "Perfecto Ana, queda agendado para el martes a las 10."
+
+**Ejemplo 6: Consulta sobre la Empresa**
+Usuario: "¿Cuál es el horario de atención?"
+Asistente (Pensamiento): "El usuario pregunta por información específica de la empresa. Debo usar searchKnowledge."
+Asistente: (Llama a tool searchKnowledge con query: "horario de atención") 
+[Si encuentra]: "Nuestro horario es de lunes a viernes de 9am a 6pm."
+[Si no encuentra]: "Disculpe, no tengo esa información disponible en este momento."
+
+**Instrucciones Finales:**
+- NO inventes fechas.
+- Si el usuario no especifica duración, asume 30 minutos pero confírmalo.
+- Sé amable pero eficiente.
+- Usa searchKnowledge para consultas específicas sobre la empresa.
+- Si searchKnowledge no encuentra resultados, NUNCA inventes información.
 `;
 
     if (personality.enterpriseInformation) {
-      instruction += `\n**Business Information:**\n${personality.enterpriseInformation}\n`;
+      instruction += `\n**Información del Negocio:**\n${personality.enterpriseInformation}\n`;
     }
 
     if (personality.clientInformation) {
-      instruction += `\n**Client Handling Guidelines:**\n${personality.clientInformation}\n`;
+      instruction += `\n**Pautas de Manejo de Clientes:**\n${personality.clientInformation}\n`;
     }
 
     if (personality.businessRestrictions) {
-      instruction += `\n**Important Restrictions:**\n${personality.businessRestrictions}\n`;
+      instruction += `\n**Restricciones Importantes:**\n${personality.businessRestrictions}\n`;
     }
 
-    instruction += `\nAlways maintain your personality traits while being helpful and professional.`;
+    instruction += `\nMantén siempre tus rasgos de personalidad mientras eres útil y profesional.`;
 
     return instruction;
   }
@@ -546,22 +903,22 @@ You help clients with inquiries, appointments, and general information about the
    * Map formality level (1-10) to descriptive text
    */
   private getFormalityDescription(level: number): string {
-    if (level <= 3) return 'Very casual and friendly';
-    if (level <= 5) return 'Conversational and approachable';
-    if (level <= 7) return 'Professional yet warm';
-    if (level <= 9) return 'Formal and polished';
-    return 'Highly formal and ceremonious';
+    if (level <= 3) return 'Muy casual y amigable';
+    if (level <= 5) return 'Conversacional y accesible';
+    if (level <= 7) return 'Profesional pero cálido';
+    if (level <= 9) return 'Formal y pulido';
+    return 'Altamente formal y ceremonioso';
   }
 
   /**
    * Map dynamism level (1-10) to descriptive text
    */
   private getDynamismDescription(level: number): string {
-    if (level <= 3) return 'Calm and measured';
-    if (level <= 5) return 'Balanced energy';
-    if (level <= 7) return 'Energetic and engaging';
-    if (level <= 9) return 'Very enthusiastic';
-    return 'Highly dynamic and animated';
+    if (level <= 3) return 'Calmado y mesurado';
+    if (level <= 5) return 'Energía equilibrada';
+    if (level <= 7) return 'Energético y atractivo';
+    if (level <= 9) return 'Muy entusiasta';
+    return 'Altamente dinámico y animado';
   }
 
   /**

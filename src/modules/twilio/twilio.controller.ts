@@ -92,10 +92,10 @@ export class TwilioWebhookController {
     @Res() res: Response,
   ) {
     this.logger.log('Received VoIP voice call webhook');
-    this.logger.debug('Call details:', body);
+    this.logger.debug(`Call details: ${JSON.stringify(body)}`);
 
     // Log call information
-    const { From, To, CallSid, CallStatus } = body;
+    const { From, To, CallSid, CallStatus, receptionistId } = body;
     this.logger.log(
       `VoIP call from ${From} to ${To} (SID: ${CallSid}, Status: ${CallStatus})`,
     );
@@ -115,7 +115,10 @@ export class TwilioWebhookController {
     // );
 
     // Generate TwiML response with Media Streams
-    const twiml = this.twilioService.generateIncomingCallTwiML(streamUrl);
+    const twiml = this.twilioService.generateIncomingCallTwiML(
+      streamUrl,
+      receptionistId,
+    );
 
     // Send TwiML response
     res.status(HttpStatus.OK).type('text/xml').send(twiml);

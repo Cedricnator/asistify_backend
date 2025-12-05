@@ -71,7 +71,7 @@ export class CalendarController {
 
   @Version('1')
   @Get()
-    @UseGuards(RequiresSuscriptionGuard)
+    //@UseGuards(RequiresSuscriptionGuard)
   @ApiOperation({ summary: 'List calendars' })
   async listCalendars(@EnterpriseId() enterpriseId:string): Promise<CalendarDto[]> {
     return await this.listCalendarsUseCase.execute();
@@ -105,6 +105,7 @@ export class CalendarController {
   @Version('1')
   @Patch('date')
   @ApiOperation({ summary: 'Update event data' })
+  @UseGuards(RequiresSuscriptionGuard)
   async update(@EnterpriseId() enterpriseId,@Body() dto: DateDto): Promise<DateDto> {
     if (dto.calendarId==null){
       console.log("using enterpriseID")
@@ -125,6 +126,7 @@ export class CalendarController {
   @Version('1')
   @Delete('date')
   @ApiOperation({ summary: 'Remove an event' })
+  @UseGuards(RequiresSuscriptionGuard)
   async remove(
     @EnterpriseId() enterpriseId,
     @Query('eventId') eventId: string,

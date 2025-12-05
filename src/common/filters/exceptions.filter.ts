@@ -17,6 +17,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { Response } from 'express';
+import { PaymentRequiredException } from 'src/modules/payments/infrastructure/middleware/payment-exception.exception';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -53,7 +54,11 @@ export class AllExceptionsFilter implements ExceptionFilter {
       statusCode = HttpStatus.UNSUPPORTED_MEDIA_TYPE;
     } else if (exception instanceof PayloadTooLargeException) {
       statusCode = HttpStatus.PAYLOAD_TOO_LARGE;
-    } else {
+    }
+    else if (exception instanceof PaymentRequiredException){
+      statusCode=HttpStatus.PAYMENT_REQUIRED
+    }
+     else {
       statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
       message = 'Internal server error';
     }

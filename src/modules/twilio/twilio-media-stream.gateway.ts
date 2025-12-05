@@ -15,6 +15,8 @@ import {
   hasAudioSignal,
   mulawToPcm8k,
 } from './audio-utils';
+import { CreateDateUseCase } from '../calendar/application/use-cases/create-date.use-case';
+import { AssistantManager } from '../receptionist/application/assistant/assistant-manager';
 
 /**
  * Twilio Media Streams Gateway
@@ -57,7 +59,11 @@ export class TwilioMediaStreamGateway
   // Duration of the last audio response sent to Twilio (ms)
   private lastResponseDurationMs: Map<any, number> = new Map();
 
-  constructor(private readonly configService: ConfigService) {}
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly createDateUseCase: CreateDateUseCase,
+    private readonly assistantManager: AssistantManager,
+  ) {}
 
   /**
    * Handle new WebSocket connection from Twilio
@@ -128,6 +134,14 @@ export class TwilioMediaStreamGateway
         this.handleStreamStop(client, data);
         break;
 
+      case 'mark':
+        this.handleMark(client, data);
+        break;
+
+      case 'clear':
+        this.handleClear(client, data);
+        break;
+
       default:
         this.logger.debug(`Unhandled event: ${data.event}`);
     }
@@ -155,25 +169,60 @@ export class TwilioMediaStreamGateway
     this.audioBuffers.set(client, []);
 
     // Initialize agent asynchronously (non-blocking)
-    this.initializeAgent(client, data.streamSid).catch((error) => {
-      this.logger.error('Error initializing agent:', error);
-      this.logger.error('Error stack:', error.stack);
-    });
+    this.logger.log(`handleStreamStart data: ${JSON.stringify(data)}`);
+    const customParams = data.start.customParameters;
+    const receptionistId = customParams?.receptionistId;
+
+    this.initializeAgent(client, data.streamSid, receptionistId).catch(
+      (error) => {
+        this.logger.error('Error initializing agent:', error);
+        this.logger.error('Error stack:', error.stack);
+      },
+    );
   }
 
   /**
    * Initialize agent asynchronously
    */
-  private async initializeAgent(client: any, streamSid: string) {
+  private async initializeAgent(
+    client: any,
+    streamSid: string,
+    receptionistId?: string,
+  ) {
     try {
-      // Create new VoiceAgent for this call
-      const agent = new VoiceAgent(this.configService);
+      let agent: VoiceAgent;
+
+      // Default personality for AI receptionist
+      const defaultPersonality: ReceptionistPersonality = {
+        name: 'AI Receptionist',
+        levelFormality: 7, // Professional but friendly
+        levelDynamism: 8, // Energetic and engaging
+        enterpriseInformation: null,
+        clientInformation: null,
+        businessRestrictions: null,
+      };
+
+      if (receptionistId) {
+        this.logger.log(
+          `Initializing session for receptionist ID: ${receptionistId}`,
+        );
+        // Use AssistantManager to initialize session with full context
+        agent = await this.assistantManager.initializeVoiceSession(
+          defaultPersonality,
+          receptionistId,
+        );
+      } else {
+        // Fallback: Create new VoiceAgent manually
+        this.logger.warn(
+          'No receptionistId provided. Using default personality and no calendar.',
+        );
+        agent = new VoiceAgent(this.configService, this.createDateUseCase);
+        await agent.onModuleInit(); // Manually init
+        await agent.initializeSession(defaultPersonality, 'default-id');
+      }
 
       // Store the agent session immediately
       this.sessions.set(client, agent);
-
-      // Manually initialize the agent (since we're not using DI)
-      await agent.onModuleInit();
 
       // Set up audio response handler - send audio back to Twilio
       agent.onAudioResponse((audioBuffer: Buffer) => {
@@ -206,43 +255,46 @@ export class TwilioMediaStreamGateway
       // When the agent signals that generation is complete, re-enable sending
       if (typeof agent.onGenerationComplete === 'function') {
         agent.onGenerationComplete(async () => {
-          // Wait for the voice response to finish playing before re-enabling sending
-          const responseDuration = this.lastResponseDurationMs.get(client) || 0;
-          const bufferMs = 1500; // Extra buffer to account for network/processing delays
-          const totalWaitMs = responseDuration + bufferMs;
-
-          this.logger.log(
-            `Waiting ${totalWaitMs}ms for voice response to finish before re-enabling sending`,
-          );
-
-          await new Promise((resolve) => setTimeout(resolve, totalWaitMs));
-
-          this.lastNonSilentAt.set(client, Date.now());
-          this.sendingBlocked.set(client, false);
-          this.logger.log(
-            'Re-enabled sending audio to Gemini after response playback',
-          );
+          // No delay needed for full duplex
+          this.logger.debug('Generation complete signal received');
         });
       }
 
-      // Default personality for AI receptionist
-      const personality: ReceptionistPersonality = {
-        name: 'AI Receptionist',
-        levelFormality: 7, // Professional but friendly
-        levelDynamism: 8, // Energetic and engaging
-        enterpriseInformation: null,
-        clientInformation: null,
-        businessRestrictions: null,
-      };
-
       // Connect to Gemini with personality
-      await agent.connect(personality);
+      // Note: If AssistantManager was used, it might have fetched a specific personality.
+      // Ideally, we should use THAT personality to connect.
+      // But for now, we pass defaultPersonality or rely on the agent to handle it.
+      // VoiceAgent.connect() currently requires personality to build system instruction.
+      // If agent was initialized via AssistantManager, it has the personality stored internally.
+      // We should update VoiceAgent.connect to use stored personality if available.
+      // For now, we pass defaultPersonality as a fallback if we don't have the real one handy here.
+      // This is a limitation we should fix in VoiceAgent later.
+      await agent.connect();
 
       this.logger.log('Voice agent connected and ready');
 
+      // Flush buffered audio
+      const bufferedAudio = this.audioBuffers.get(client) || [];
+      if (bufferedAudio.length > 0) {
+        this.logger.log(
+          `Flushing ${bufferedAudio.length} buffered audio chunks`,
+        );
+        for (const audioBuffer of bufferedAudio) {
+          try {
+            const geminiPayload = twilioToGeminiAudio(audioBuffer);
+            await agent.sendAudio(geminiPayload);
+          } catch (error) {
+            this.logger.error('Error sending buffered audio:', error);
+          }
+        }
+        this.audioBuffers.set(client, []);
+      }
+
       // Send an initial text message to start the conversation (for debugging)
       try {
-        await agent.sendText('Hola, quiero agendar una hora.');
+        // const date = new Date();
+        // date.setDate(date.getDate() + 1);
+        await agent.sendText('Hola');
         this.logger.log('Sent initial greeting to Gemini');
       } catch (err) {
         this.logger.error(
@@ -250,6 +302,9 @@ export class TwilioMediaStreamGateway
           err?.message || err,
         );
       }
+
+      // Removed blocking to allow immediate interaction
+      // this.sendingBlocked.set(client, true);
 
       // Wait a moment for Gemini to fully initialize
       await new Promise((resolve) => setTimeout(resolve, 500));
@@ -270,7 +325,7 @@ export class TwilioMediaStreamGateway
     }
 
     if (this.sendingBlocked.get(client)) {
-      this.logger.log('Blocked');
+      // this.logger.log('Blocked');
       return;
     }
 
@@ -380,5 +435,25 @@ export class TwilioMediaStreamGateway
     }
     this.sendingBlocked.set(client, isMuted);
     this.logger.log(`Mute state changed: ${isMuted ? 'muted' : 'unmuted'}`);
+  }
+
+  /**
+   * Handle 'mark' event - audio playback finished
+   */
+  private handleMark(client: any, data: any) {
+    this.logger.log(`Mark event received: ${data.mark.name}`);
+    // If we wanted to unblock here instead of estimating duration, we could.
+    // But Gemini sends audio in chunks, so we get many marks.
+    // We'd need to know which mark corresponds to the END of the response.
+  }
+
+  /**
+   * Handle 'clear' event - stream cleared (interruption)
+   */
+  private handleClear(client: any, data: any) {
+    this.logger.log('Clear event received');
+    // If the stream was cleared, it means we interrupted the bot.
+    // We should ensure we are ready to listen.
+    this.sendingBlocked.set(client, false);
   }
 }
