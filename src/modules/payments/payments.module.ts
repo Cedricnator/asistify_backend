@@ -20,6 +20,7 @@ import { CreatePlanUseCase } from './application/use-cases/create-plan.use-case'
 import { UpdatePlanUseCase } from './application/use-cases/update-plan.use-case';
 import { ListPlansUseCase } from './application/use-cases/list-plans.use-case';
 import { GetPlanUseCase } from './application/use-cases/get-plan.use-case';
+import { RequiresSuscriptionGuard } from './infrastructure/middleware/requires-suscription.guard';
 
 @Module({
   controllers: [TestPaymentController, PlansController],
@@ -33,6 +34,7 @@ import { GetPlanUseCase } from './application/use-cases/get-plan.use-case';
     UpdatePlanUseCase,
     ListPlansUseCase,
     GetPlanUseCase,
+    RequiresSuscriptionGuard,
     {
       provide: ENTERPRISE_REPOSITORY,
       useClass: EnterprisePrismaRepository,
@@ -51,6 +53,6 @@ import { GetPlanUseCase } from './application/use-cases/get-plan.use-case';
     }
 
   ],
-  exports: [],
+  exports: [RequiresSuscriptionGuard],
 })
 export class PaymentsModule {}

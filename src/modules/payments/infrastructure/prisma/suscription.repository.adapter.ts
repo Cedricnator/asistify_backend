@@ -119,7 +119,7 @@ export class SuscriptionRepositoryAdapter implements SuscriptionRepository {
 
 
 
-  async getSuscription(subscriptionId: string,enterpriseId:string,flowClientId:string): Promise<SuscriptionEntity>{
+  async getSuscription(subscriptionId: string): Promise<SuscriptionEntity>{
     let params: KVPair[] = []
     let apiKey = KVPair.ApiKey()
     params.push(apiKey)
@@ -134,9 +134,21 @@ export class SuscriptionRepositoryAdapter implements SuscriptionRepository {
 
     let data = await res.json()
     let prismaData=await this.prisma.subscription.findFirst({where:{flow_id:subscriptionId}})
-    let suscription = new SuscriptionEntity(data.subscriptionId, prismaData?.enterprise_id??"", prismaData?.membership_id!, flowClientId,data.status == 1,
+    let suscription = new SuscriptionEntity(data.subscriptionId, prismaData?.enterprise_id??"", prismaData?.membership_id!, prismaData?.flow_id??"",data.status == 1,
         data.morose == 0)
     return suscription;
+  }
+
+  async getByEnterpriseId(enterpriseId: string): Promise<SuscriptionEntity|null>{
+    let foundSuscription=await this.prisma.subscription.findFirst({where:{enterprise_id:enterpriseId}})
+    
+    if (foundSuscription==null){
+      return foundSuscription;
+    }
+
+    let flowInfo=await this.getSuscription(foundSuscription.flow_id);
+    
+    return flowInfo;
   }
   
 

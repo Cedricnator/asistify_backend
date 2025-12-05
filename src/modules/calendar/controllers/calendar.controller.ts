@@ -28,6 +28,8 @@ import { CreateDateCommand } from '../domain/commands/create-date.command';
 import { UpdateDateCommand } from '../domain/commands/update-date.command';
 import { google } from 'googleapis';
 import { Public } from 'src/modules/auth/infrastructure/decorators/public.decorator';
+import { EnterpriseId } from 'src/modules/auth/infrastructure/decorators/enterprise-id.decorator';
+import { RequiresSuscriptionGuard } from 'src/modules/payments/infrastructure/middleware/requires-suscription.guard';
 
 @ApiTags('users')
 @Controller('calendar')
@@ -66,8 +68,9 @@ export class CalendarController {
 
   @Version('1')
   @Get()
+    @UseGuards(RequiresSuscriptionGuard)
   @ApiOperation({ summary: 'List calendars' })
-  async listCalendars(): Promise<CalendarDto[]> {
+  async listCalendars(@EnterpriseId() enterpriseId:string): Promise<CalendarDto[]> {
     return await this.listCalendarsUseCase.execute();
   }
 

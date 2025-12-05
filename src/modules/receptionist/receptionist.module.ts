@@ -22,6 +22,7 @@ import { DeleteReceptionistUseCase } from './application/use-cases/recepcionist/
 import { FindAllReceptionistsUseCase } from './application/use-cases/recepcionist/find-all-receptionists.use-case';
 import { FindReceptionistByIdUseCase } from './application/use-cases/recepcionist/find-receptionist-by-id.use-case';
 import { UpdateReceptionistUseCase } from './application/use-cases/recepcionist/update-receptionist.use-case';
+import { CountReceptionistUseCase } from './application/use-cases/recepcionist/count-receptionist.use-case';
 
 @Module({
   imports: [],
@@ -44,6 +45,8 @@ import { UpdateReceptionistUseCase } from './application/use-cases/recepcionist/
     FindAllMetricsUseCase,
     FindMetricByIdUseCase,
 
+    CountReceptionistUseCase,
+
     {
       provide: RECEPCIONIST_REPOSITORY,
       useClass: ReceptionistPrismaRepository,
@@ -58,6 +61,11 @@ import { UpdateReceptionistUseCase } from './application/use-cases/recepcionist/
     },
   ],
   controllers: [ReceptionistController, AvatarController, MetricController],
-  exports: [AssistantManager, InitializeVoiceAssistantUseCase],
+  exports: [
+    AssistantManager,
+    InitializeVoiceAssistantUseCase,
+    CountReceptionistUseCase,
+    FindAllReceptionistsUseCase,
+  ],
 })
 export class ReceptionistModule {}
