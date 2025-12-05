@@ -24,7 +24,7 @@ docker pull "$IMAGE_TAG"
 
 # 5. Create .env file with secrets
 echo "📝 Creating .env file..."
-cat <<EOF > .env
+cat <<EOF >.env
 # NODE APP
 PORT=3000
 NODE_ENV=production
@@ -66,7 +66,7 @@ EOF
 # 6. Create gs2.json file
 # We construct this file using the environment variables to avoid hardcoding secrets in the script
 echo "📝 Creating gs2.json file..."
-cat <<EOF > gs2.json
+cat <<EOF >gs2.json
 {
   "installed": {
     "client_id": "$GCLIENT_ID",
